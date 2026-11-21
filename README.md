@@ -6,7 +6,14 @@ See the [target metrics reference](docs/targets.md) for scrape paths, enablement
 ## Generate and verify
 
 Use Go as declared in `go.mod`, Node.js 24, and the pnpm version in `package.json`.
-The Go module supplies Jsonnet, promtool, amtool, Task, shfmt, and golangci-lint.
+The Go module supplies the tools used to generate and verify the configuration.
+
+- Jsonnet
+- promtool
+- amtool
+- Task
+- shfmt
+- golangci-lint
 
 ```sh
 pnpm install --frozen-lockfile
@@ -15,9 +22,13 @@ pnpm check
 ```
 
 Edit `mixins/` and commit the regenerated files under `rendered/`.
-CI renders into a temporary directory and compares the bytes with the committed output.
-It also checks and tests Prometheus rules, checks Alertmanager configuration and routing, and validates the dashboard against Grafana's published V2 CUE schema.
-The dashboard schema check downloads the upstream schema over HTTPS and rejects a fixture with a numeric title.
+CI runs the following configuration checks.
+
+- Render into a temporary directory and compare the bytes with the committed output.
+- Check and test Prometheus rules.
+- Check Alertmanager configuration and routing.
+- Validate the dashboard against Grafana's published V2 CUE schema.
+  The check downloads the upstream schema over HTTPS and rejects a fixture with a numeric title.
 
 ## Load the configuration
 

@@ -22,7 +22,10 @@ It emits plain configuration for Prometheus, Grafana, and Alertmanager.
 - Grafana's [V2 dashboard specification](https://github.com/grafana/grafana/blob/main/apps/dashboard/kinds/v2/dashboard_spec.cue) defines the resource's panel, query, and layout shape.
   The checker uses the same Grafana release as the local import fixture.
 - Grafana's [alert provisioning implementation](https://github.com/grafana/grafana/blob/main/pkg/services/provisioning/alerting/rules_types.go) defines rule group, query, and no-data fields.
-- Grafana Core's [PromQL](https://github.com/grafana/skills/tree/main/skills/grafana-core/promql), [alerting and IRM](https://github.com/grafana/skills/tree/main/skills/grafana-core/alerting-irm), and [dashboarding](https://github.com/grafana/skills/tree/main/skills/grafana-core/dashboarding) skills inform query windows, annotations, panel form, and import verification.
+- Grafana Core provides guidance for three parts of the configuration.
+  - [PromQL](https://github.com/grafana/skills/tree/main/skills/grafana-core/promql) covers query windows.
+  - [Alerting and IRM](https://github.com/grafana/skills/tree/main/skills/grafana-core/alerting-irm) covers annotations.
+  - [Dashboarding](https://github.com/grafana/skills/tree/main/skills/grafana-core/dashboarding) covers panel form and import verification.
 
 ## Visualization
 

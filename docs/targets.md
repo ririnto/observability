@@ -8,7 +8,7 @@ Configure the job name shown in this table so the generated PromQL selects the i
 | --- | --- | --- | --- |
 | `apache-exporter` | HTTP 9117 by default. | `apache-exporter`, `/metrics`. | `apache_up` and `apache_accesses_total`. Prometheus attaches `job` and `instance`. |
 | `apache-httpd` | HTTP 80 and HTTPS 443 in the image. | No native Prometheus exposition in this build. Enable `mod_status` and point `apache-exporter` at `/server-status?auto`. | Apache exporter converts Apache's status response. |
-| `coredns` | DNS TCP and UDP 53. The configured `prometheus` plugin defaults to loopback 9153. | `coredns`, `/metrics`. | `coredns_dns_requests_total` with `server`, `zone`, `view`, `proto`, `family`, and `type`. |
+| `coredns` | DNS TCP and UDP 53. The configured `prometheus` plugin defaults to loopback 9153. | `coredns`, `/metrics`. | `coredns_dns_requests_total`. |
 | `dnsmasq` | DNS TCP and UDP 53 and DHCP UDP 67. | No native Prometheus HTTP listener in this build. | None. Collect DNS/DHCP logs or supply an independent exporter. |
 | `haproxy` | The image declares HTTP 80 and HTTPS 443. The exporter binds on a frontend you configure. | `haproxy`, `/metrics` when the frontend selects `prometheus-exporter` on that path. | `haproxy_frontend_http_responses_total` and `haproxy_backend_status{state="DOWN"}`. The `proxy` label identifies the frontend or backend. |
 | `monit` | Optional Monit HTTP interface. The image declares 2812. | No native Prometheus exposition in this build. | Monit status and events are separate from Prometheus. |
@@ -21,8 +21,28 @@ VTS accepts an explicit format suffix or the format set on the display location.
 The health-check example sets the location format to Prometheus.
 Choose a private listener for metrics that contain backend or virtual-host labels.
 
-The NGINX checker reports `-1` before a probe, `0` after a failed probe, and `1` after a passed probe.
-Its dashboard counts last-probe failures and excludes administratively disabled peers.
+## CoreDNS request metric labels
+
+The `coredns_dns_requests_total` metric has these labels.
+
+- `server`
+- `zone`
+- `view`
+- `proto`
+- `family`
+- `type`
+
+## NGINX probe results
+
+| Value | Probe result |
+| --- | --- |
+| `-1` | No probe has completed. |
+| `0` | The last probe failed. |
+| `1` | The last probe passed. |
+
+The dashboard counts last-probe failures and excludes administratively disabled peers.
+
+## Node Exporter collector results
 
 Node Exporter returns a collector success value of zero for both an error and a no-data result.
 The dashboard counts both outcomes from reachable exporters and shows the longest duration among successful collectors.
