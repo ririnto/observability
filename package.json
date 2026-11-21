@@ -17,7 +17,7 @@
     "fix": "run-p fix:*",
     "fix:jsonnetfmt": "go tool jsonnetfmt -i mixins/main.jsonnet mixins/targets.libsonnet mixins/dashboard.libsonnet mixins/alerts.libsonnet",
     "fix:markdownlint-cli2": "markdownlint-cli2 --fix",
-    "fix:shfmt": "go tool shfmt -w scripts",
+    "fix:shfmt": "go tool shfmt -w tests",
     "fix:ultracite": "ultracite fix",
     "generate": "go tool task generate"
   },

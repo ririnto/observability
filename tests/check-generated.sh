@@ -4,6 +4,5 @@ set -euo pipefail
 directory="$(mktemp -d)"
 trap 'rm -rf -- "$directory"' EXIT
 
-go tool jsonnet -S -m "$directory" mixins/main.jsonnet
-pnpm exec oxfmt --config oxfmt.config.ts --write "$directory"
+go tool task generate OUTPUT_DIR="$directory"
 diff -ru rendered "$directory"

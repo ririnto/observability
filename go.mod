@@ -12,7 +12,10 @@ tool (
 	mvdan.cc/sh/v3/cmd/shfmt
 )
 
-require cuelang.org/go v0.17.1
+require (
+	cuelang.org/go v0.17.1
+	go.yaml.in/yaml/v3 v3.0.5
+)
 
 require (
 	4d63.com/gocheckcompilerdirectives v1.3.0 // indirect
@@ -432,7 +435,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e // indirect
 	golang.org/x/exp/typeparams v0.0.0-20260209203927-2842357ff358 // indirect
