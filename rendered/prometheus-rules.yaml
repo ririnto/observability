@@ -1,40 +1,40 @@
-"groups":
-  - "interval": "1m"
-    "name": "static-targets"
-    "rules":
-      - "alert": "StaticTargetScrapeFailed"
-        "annotations":
-          "description": "Check the target process, listener, scrape path, and network reachability."
-          "summary": "Prometheus cannot scrape {{ $labels.job }} at {{ $labels.instance }}."
-        "expr": 'up{job=~"apache-exporter|coredns|haproxy|nginx|nginx-health-traffic|nginx-upstream-healthcheck|node-exporter|vector"} == 0'
-        "for": "5m"
-        "labels":
-          "owner": "prometheus"
-          "severity": "warning"
-      - "alert": "ApacheStatusScrapeFailed"
-        "annotations":
-          "description": "Check the configured scrape URI, mod_status access rules, and the Apache service."
-          "summary": "The Apache exporter cannot read Apache status at {{ $labels.instance }}."
-        "expr": 'apache_up{job="apache-exporter"} == 0'
-        "for": "5m"
-        "labels":
-          "owner": "prometheus"
-          "severity": "warning"
-      - "alert": "HAProxyBackendDown"
-        "annotations":
-          "description": "Check server health and connectivity in the affected backend."
-          "summary": "HAProxy backend {{ $labels.proxy }} is down at {{ $labels.instance }}."
-        "expr": 'haproxy_backend_status{job="haproxy",state="DOWN"} == 1'
-        "for": "5m"
-        "labels":
-          "owner": "prometheus"
-          "severity": "warning"
-      - "alert": "NodeTextFileCollectorScrapeError"
-        "annotations":
-          "description": "Check the configured textfile directories, permissions, and Prometheus format of the metric files."
-          "summary": "Node Exporter could not read textfile metrics at {{ $labels.instance }}."
-        "expr": '(node_textfile_scrape_error{job="node-exporter"} == 1) and on (job, instance) (up{job="node-exporter"} == 1)'
-        "for": "5m"
-        "labels":
-          "owner": "prometheus"
-          "severity": "warning"
+groups:
+  - interval: 1m
+    name: static-targets
+    rules:
+      - alert: StaticTargetScrapeFailed
+        annotations:
+          description: Check the target process, listener, scrape path, and network reachability.
+          summary: Prometheus cannot scrape {{ $labels.job }} at {{ $labels.instance }}.
+        expr: up{job=~"apache-exporter|coredns|haproxy|nginx|nginx-health-traffic|nginx-upstream-healthcheck|node-exporter|vector"} == 0
+        for: 5m
+        labels:
+          owner: prometheus
+          severity: warning
+      - alert: ApacheStatusScrapeFailed
+        annotations:
+          description: Check the configured scrape URI, mod_status access rules, and the Apache service.
+          summary: The Apache exporter cannot read Apache status at {{ $labels.instance }}.
+        expr: apache_up{job="apache-exporter"} == 0
+        for: 5m
+        labels:
+          owner: prometheus
+          severity: warning
+      - alert: HAProxyBackendDown
+        annotations:
+          description: Check server health and connectivity in the affected backend.
+          summary: HAProxy backend {{ $labels.proxy }} is down at {{ $labels.instance }}.
+        expr: haproxy_backend_status{job="haproxy",state="DOWN"} == 1
+        for: 5m
+        labels:
+          owner: prometheus
+          severity: warning
+      - alert: NodeTextFileCollectorScrapeError
+        annotations:
+          description: Check the configured textfile directories, permissions, and Prometheus format of the metric files.
+          summary: Node Exporter could not read textfile metrics at {{ $labels.instance }}.
+        expr: (node_textfile_scrape_error{job="node-exporter"} == 1) and on (job, instance) (up{job="node-exporter"} == 1)
+        for: 5m
+        labels:
+          owner: prometheus
+          severity: warning
