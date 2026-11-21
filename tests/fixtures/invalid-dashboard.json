@@ -1,0 +1,12 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "metadata": { "name": "invalid-dashboard" },
+  "spec": {
+    "cursorSync": "Off",
+    "elements": {},
+    "layout": { "kind": "GridLayout", "spec": { "items": [] } },
+    "timeSettings": { "from": "now-1h", "to": "now" },
+    "title": 7
+  }
+}

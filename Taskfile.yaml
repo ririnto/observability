@@ -1,0 +1,30 @@
+version: "3"
+
+tasks:
+  generate:
+    cmds:
+      - go tool jsonnet -S -m rendered mixins/main.jsonnet
+      - pnpm exec oxfmt --write rendered
+  check:generated:
+    cmds:
+      - bash scripts/check-generated.sh
+  check:rules:
+    cmds:
+      - go tool promtool check rules --lint-fatal rendered/prometheus-rules.yaml
+      - go tool promtool test rules tests/prometheus/rules.yaml
+  check:alertmanager:
+    cmds:
+      - go tool amtool check-config rendered/alertmanager.yaml
+      - go tool amtool config routes test --config.file=rendered/alertmanager.yaml --verify.receivers=discard severity=warning job=coredns
+  check:dashboard:
+    cmds:
+      - bash scripts/check-dashboard.sh
+  check:go:
+    cmds:
+      - go tool golangci-lint run ./...
+  check:shell:
+    cmds:
+      - go tool shfmt -d scripts
+  check:jsonnet:
+    cmds:
+      - go tool jsonnetfmt --test mixins/main.jsonnet mixins/targets.libsonnet mixins/dashboard.libsonnet mixins/alerts.libsonnet
