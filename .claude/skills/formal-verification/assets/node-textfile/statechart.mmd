@@ -1,0 +1,12 @@
+---
+title: "Node Exporter textfile alert"
+---
+stateDiagram-v2
+  s0: Inactive
+  s1: Pending
+  s2: Firing
+  [*] --> s0
+  s0 --> s1: Reachable exporter reports a collector error
+  s1 --> s0: Exporter is unreachable or collector error clears
+  s1 --> s2: Error persists for five minutes
+  s2 --> s0: Exporter is unreachable or collector error clears
