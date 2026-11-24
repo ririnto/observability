@@ -1,5 +1,8 @@
 rule_files:
   - ../../rendered/prometheus-rules.yaml
+  - ../../rendered/vector-rules.yaml
+  - ../../rendered/kubernetes-recording-rules.yaml
+  - ../../rendered/kubernetes-alert-rules.yaml
 evaluation_interval: 1m
 tests:
   - name: down scrape pages after five minutes and clears on recovery
@@ -109,3 +112,76 @@ tests:
               description: Check the target process, listener, scrape path, and network reachability.
       - eval_time: 7m
         alertname: NodeTextFileCollectorScrapeError
+  - name: Vector alerts after ten minutes of positive error rates and clears when they stop
+    interval: 1m
+    input_series:
+      - series: vector_component_errors_total{job="vector",component_id="fixture"}
+        values: 0+1x11 11+0x5
+      - series: vector_component_errors_total{job="other",component_id="fixture"}
+        values: 0+1x17
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: VectorComponentErrors
+      - eval_time: 11m
+        alertname: VectorComponentErrors
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              owner: prometheus
+            exp_annotations:
+              summary: Vector records sustained component errors.
+              description: Inspect the error type, component logs, and pipeline inputs before enabling notifications.
+      - eval_time: 15m
+        alertname: VectorComponentErrors
+  - name: Kubernetes reports a crash looping container after fifteen minutes and clears on recovery
+    interval: 1m
+    input_series:
+      - series: kube_pod_container_status_waiting_reason{job="kube-state-metrics",reason="CrashLoopBackOff",namespace="demo",pod="web",container="server"}
+        values: 1+0x15 0+0x5
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: KubePodCrashLooping
+      - eval_time: 15m
+        alertname: KubePodCrashLooping
+        exp_alerts:
+          - exp_labels:
+              container: server
+              job: kube-state-metrics
+              namespace: demo
+              owner: prometheus
+              pod: web
+              reason: CrashLoopBackOff
+              severity: warning
+            exp_annotations:
+              description: 'Pod demo/web (server) is in waiting state (reason: "CrashLoopBackOff").'
+              runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepodcrashlooping
+              summary: Pod is crash looping.
+      - eval_time: 20m
+        alertname: KubePodCrashLooping
+  - name: API server hourly request counts retain each upstream status class and verb
+    interval: 1m
+    input_series:
+      - series: apiserver_request_total{job="kube-apiserver",cluster="demo",code="200",verb="GET"}
+        values: 0+1x60
+      - series: apiserver_request_total{job="kube-apiserver",cluster="demo",code="302",verb="GET"}
+        values: 0+2x60
+      - series: apiserver_request_total{job="kube-apiserver",cluster="demo",code="404",verb="POST"}
+        values: 0+3x60
+      - series: apiserver_request_total{job="kube-apiserver",cluster="demo",code="503",verb="POST"}
+        values: 0+4x60
+      - series: apiserver_request_total{job="kube-apiserver",cluster="demo",code="101",verb="GET"}
+        values: 0+5x60
+      - series: apiserver_request_total{job="other",cluster="demo",code="200",verb="GET"}
+        values: 0+6x60
+    promql_expr_test:
+      - expr: code_verb:apiserver_request_total:increase1h
+        eval_time: 1h
+        exp_samples:
+          - labels: code_verb:apiserver_request_total:increase1h{cluster="demo",code="200",verb="GET"}
+            value: 60
+          - labels: code_verb:apiserver_request_total:increase1h{cluster="demo",code="302",verb="GET"}
+            value: 120
+          - labels: code_verb:apiserver_request_total:increase1h{cluster="demo",code="404",verb="POST"}
+            value: 180
+          - labels: code_verb:apiserver_request_total:increase1h{cluster="demo",code="503",verb="POST"}
+            value: 240

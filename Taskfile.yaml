@@ -5,16 +5,17 @@ tasks:
     env:
       OUTPUT_DIR: '{{.OUTPUT_DIR | default "rendered"}}'
     cmds:
-      - go tool jsonnet -S -m "$OUTPUT_DIR" mixins/main.jsonnet
-      - go run ./cmd/formatyaml "$OUTPUT_DIR"/*.yaml
-      - pnpm exec oxfmt --config oxfmt.config.ts --write "$OUTPUT_DIR"
+      - bash scripts/generate.sh
   check:generated:
     cmds:
       - bash tests/check-generated.sh
   check:rules:
     cmds:
-      - go tool promtool check rules --lint-fatal rendered/prometheus-rules.yaml
+      - go tool promtool check rules --lint-fatal rendered/*-rules.yaml
       - go tool promtool test rules tests/prometheus/rules.yaml
+  check:alert-parity:
+    cmds:
+      - go run ./cmd/alertparity rendered
   check:alertmanager:
     cmds:
       - go tool amtool check-config rendered/alertmanager.yaml
@@ -27,7 +28,7 @@ tasks:
       - go tool golangci-lint run ./...
   check:shell:
     cmds:
-      - go tool shfmt -d tests
+      - go tool shfmt -d scripts tests
   check:jsonnet:
     cmds:
-      - go tool jsonnetfmt --test mixins/main.jsonnet mixins/targets.libsonnet mixins/dashboard.libsonnet mixins/alerts.libsonnet
+      - go tool jsonnetfmt --test mixins/*.jsonnet mixins/*.libsonnet

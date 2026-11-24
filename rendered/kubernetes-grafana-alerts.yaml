@@ -1,0 +1,2697 @@
+apiVersion: 1
+groups:
+  - folder: Kubernetes
+    interval: 1m
+    name: kubernetes-apps
+    orgId: 1
+    rules:
+      - annotations:
+          description: 'Pod {{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is in waiting state (reason: "CrashLoopBackOff").'
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepodcrashlooping
+          summary: Pod is crash looping.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                max_over_time(kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff", job="kube-state-metrics"}[5m]) >= 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubePodCrashLooping
+          severity: warning
+        noDataState: OK
+        title: KubePodCrashLooping
+        uid: obs-25ed589461ebe862cfa041ffc1d7c21a
+      - annotations:
+          description: Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-ready state for longer than 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepodnotready
+          summary: Pod has been in a non-ready state for more than 15 minutes.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum by (namespace, pod, job, cluster) (
+                  max by(namespace, pod, job, cluster) (
+                    kube_pod_status_phase{job="kube-state-metrics", phase=~"Pending|Unknown"}
+                    or
+                    (
+                      kube_pod_status_phase{job="kube-state-metrics", phase="Running"} == 1
+                      and on(namespace, pod, cluster)
+                      kube_pod_status_ready{job="kube-state-metrics", condition="true"} == 0
+                    )
+                  ) * on(namespace, pod, cluster) group_left() topk by(namespace, pod, cluster) (
+                    1, max by(namespace, pod, owner_kind, cluster) (kube_pod_owner{owner_kind!="Job"})
+                  )
+                ) > 0
+                unless on(namespace, pod, cluster)
+                kube_pod_status_reason{job="kube-state-metrics", reason="SchedulingGated"} == 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubePodNotReady
+          severity: warning
+        noDataState: OK
+        title: KubePodNotReady
+        uid: obs-6a986ab4d18b79619452ce6de2c5c64e
+      - annotations:
+          description: Deployment generation for {{ $labels.namespace }}/{{ $labels.deployment }} does not match, this indicates that the Deployment has failed but has not been rolled back.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedeploymentgenerationmismatch
+          summary: Deployment generation mismatch due to possible roll-back
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kube_deployment_status_observed_generation{job="kube-state-metrics"}
+                  !=
+                kube_deployment_metadata_generation{job="kube-state-metrics"}
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeDeploymentGenerationMismatch
+          severity: warning
+        noDataState: OK
+        title: KubeDeploymentGenerationMismatch
+        uid: obs-495cfa264c1efb686fc4fd9ed3ae80dd
+      - annotations:
+          description: Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has not matched the expected number of replicas for longer than 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedeploymentreplicasmismatch
+          summary: Deployment has not matched the expected number of replicas.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  kube_deployment_spec_replicas{job="kube-state-metrics"}
+                    >
+                  kube_deployment_status_replicas_available{job="kube-state-metrics"}
+                ) and (
+                  changes(kube_deployment_status_replicas_updated{job="kube-state-metrics"}[10m])
+                    ==
+                  0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeDeploymentReplicasMismatch
+          severity: warning
+        noDataState: OK
+        title: KubeDeploymentReplicasMismatch
+        uid: obs-3f20f9440026e3898b9629dc5b6c928a
+      - annotations:
+          description: Rollout of deployment {{ $labels.namespace }}/{{ $labels.deployment }} is not progressing for longer than 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedeploymentrolloutstuck
+          summary: Deployment rollout is not progressing.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kube_deployment_status_condition{condition="Progressing", status="false",job="kube-state-metrics"}
+                != 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeDeploymentRolloutStuck
+          severity: warning
+        noDataState: OK
+        title: KubeDeploymentRolloutStuck
+        uid: obs-d7be25c1d1412b2b99899e21f44e2142
+      - annotations:
+          description: StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} has not matched the expected number of replicas for longer than 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubestatefulsetreplicasmismatch
+          summary: StatefulSet has not matched the expected number of replicas.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  kube_statefulset_status_replicas_ready{job="kube-state-metrics"}
+                    !=
+                  kube_statefulset_replicas{job="kube-state-metrics"}
+                ) and (
+                  changes(kube_statefulset_status_replicas_updated{job="kube-state-metrics"}[10m])
+                    ==
+                  0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeStatefulSetReplicasMismatch
+          severity: warning
+        noDataState: OK
+        title: KubeStatefulSetReplicasMismatch
+        uid: obs-e7f0e342ad4e16401c66bbbffe7c4908
+      - annotations:
+          description: StatefulSet generation for {{ $labels.namespace }}/{{ $labels.statefulset }} does not match, this indicates that the StatefulSet has failed but has not been rolled back.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubestatefulsetgenerationmismatch
+          summary: StatefulSet generation mismatch due to possible roll-back
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kube_statefulset_status_observed_generation{job="kube-state-metrics"}
+                  !=
+                kube_statefulset_metadata_generation{job="kube-state-metrics"}
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeStatefulSetGenerationMismatch
+          severity: warning
+        noDataState: OK
+        title: KubeStatefulSetGenerationMismatch
+        uid: obs-03bfaf5582614d94d85c77eccfffec1c
+      - annotations:
+          description: StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} update has not been rolled out.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubestatefulsetupdatenotrolledout
+          summary: StatefulSet update has not been rolled out.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  max by(namespace, statefulset, job, cluster) (
+                    kube_statefulset_status_current_revision{job="kube-state-metrics"}
+                      unless
+                    kube_statefulset_status_update_revision{job="kube-state-metrics"}
+                  )
+                    * on(namespace, statefulset, job, cluster)
+                  (
+                    kube_statefulset_replicas{job="kube-state-metrics"}
+                      !=
+                    kube_statefulset_status_replicas_updated{job="kube-state-metrics"}
+                  )
+                )  and on(namespace, statefulset, job, cluster) (
+                  changes(kube_statefulset_status_replicas_updated{job="kube-state-metrics"}[5m])
+                    ==
+                  0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeStatefulSetUpdateNotRolledOut
+          severity: warning
+        noDataState: OK
+        title: KubeStatefulSetUpdateNotRolledOut
+        uid: obs-4c5244f6947938e57a369efa4fa66605
+      - annotations:
+          description: DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }} has not finished or progressed for at least 15m.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedaemonsetrolloutstuck
+          summary: DaemonSet rollout is stuck.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  (
+                    kube_daemonset_status_current_number_scheduled{job="kube-state-metrics"}
+                      !=
+                    kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics"}
+                  ) or (
+                    kube_daemonset_status_number_misscheduled{job="kube-state-metrics"}
+                      !=
+                    0
+                  ) or (
+                    kube_daemonset_status_updated_number_scheduled{job="kube-state-metrics"}
+                      !=
+                    kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics"}
+                  ) or (
+                    kube_daemonset_status_number_available{job="kube-state-metrics"}
+                      !=
+                    kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics"}
+                  )
+                ) and (
+                  changes(kube_daemonset_status_updated_number_scheduled{job="kube-state-metrics"}[5m])
+                    ==
+                  0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeDaemonSetRolloutStuck
+          severity: warning
+        noDataState: OK
+        title: KubeDaemonSetRolloutStuck
+        uid: obs-4391a515a962de9d080a005e6cccae4c
+      - annotations:
+          description: 'pod/{{ $labels.pod }} in namespace {{ $labels.namespace }} on container {{ $labels.container}} has been in waiting state for longer than 1 hour. (reason: "{{ $labels.reason }}").'
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubecontainerwaiting
+          summary: Pod container waiting longer than 1 hour
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kube_pod_container_status_waiting_reason{reason!="CrashLoopBackOff", job="kube-state-metrics"} > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeContainerWaiting
+          severity: warning
+        noDataState: OK
+        title: KubeContainerWaiting
+        uid: obs-f2cf484c9ed06f66a3832dbbcb31fdfe
+      - annotations:
+          description: "{{ $values.A.Value }} Pods of DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }} are not scheduled."
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedaemonsetnotscheduled
+          summary: DaemonSet pods are not scheduled.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics"}
+                  -
+                kube_daemonset_status_current_number_scheduled{job="kube-state-metrics"} > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeDaemonSetNotScheduled
+          severity: warning
+        noDataState: OK
+        title: KubeDaemonSetNotScheduled
+        uid: obs-c6c9f5c53b61e53b20665f5770717974
+      - annotations:
+          description: "{{ $values.A.Value }} Pods of DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }} are running where they are not supposed to run."
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedaemonsetmisscheduled
+          summary: DaemonSet pods are misscheduled.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kube_daemonset_status_number_misscheduled{job="kube-state-metrics"} > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeDaemonSetMisScheduled
+          severity: warning
+        noDataState: OK
+        title: KubeDaemonSetMisScheduled
+        uid: obs-2f4187c3000d9454cc0de786ae576af2
+      - annotations:
+          description: Job {{ $labels.namespace }}/{{ $labels.job_name }} is taking more than {{ "43200" | humanizeDuration }} to complete.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubejobnotcompleted
+          summary: Job did not complete in time
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                time() - max by(namespace, job_name, cluster) (kube_job_status_start_time{job="kube-state-metrics"}
+                  and
+                kube_job_status_active{job="kube-state-metrics"} > 0) > 43200
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 0s
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeJobNotCompleted
+          severity: warning
+        noDataState: OK
+        title: KubeJobNotCompleted
+        uid: obs-2e3932d30a20b73cb8c4f242b9322f28
+      - annotations:
+          description: Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete. Removing failed job after investigation should clear this alert.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubejobfailed
+          summary: Job failed to complete.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kube_job_failed{job="kube-state-metrics"}  > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeJobFailed
+          severity: warning
+        noDataState: OK
+        title: KubeJobFailed
+        uid: obs-8c5d5676c47161ef7e9ec3c8b1d39584
+      - annotations:
+          description: HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler  }} has not matched the desired number of replicas for longer than 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubehpareplicasmismatch
+          summary: HPA has not matched desired number of replicas.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (kube_horizontalpodautoscaler_status_desired_replicas{job="kube-state-metrics"}
+                  !=
+                kube_horizontalpodautoscaler_status_current_replicas{job="kube-state-metrics"})
+                  and
+                (kube_horizontalpodautoscaler_status_current_replicas{job="kube-state-metrics"}
+                  >
+                kube_horizontalpodautoscaler_spec_min_replicas{job="kube-state-metrics"})
+                  and
+                (kube_horizontalpodautoscaler_status_current_replicas{job="kube-state-metrics"}
+                  <
+                kube_horizontalpodautoscaler_spec_max_replicas{job="kube-state-metrics"})
+                  and
+                changes(kube_horizontalpodautoscaler_status_current_replicas{job="kube-state-metrics"}[15m]) == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeHpaReplicasMismatch
+          severity: warning
+        noDataState: OK
+        title: KubeHpaReplicasMismatch
+        uid: obs-a7072c7c41b6280f0b495b926d7ebb73
+      - annotations:
+          description: HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler  }} has been running at max replicas for longer than 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubehpamaxedout
+          summary: HPA is running at max replicas
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  kube_horizontalpodautoscaler_status_current_replicas{job="kube-state-metrics"}
+                    ==
+                  kube_horizontalpodautoscaler_spec_max_replicas{job="kube-state-metrics"}
+                )
+                and on(namespace, horizontalpodautoscaler, cluster) (
+                  kube_horizontalpodautoscaler_spec_max_replicas{job="kube-state-metrics"}
+                    !=
+                  kube_horizontalpodautoscaler_spec_min_replicas{job="kube-state-metrics"}
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeHpaMaxedOut
+          severity: warning
+        noDataState: OK
+        title: KubeHpaMaxedOut
+        uid: obs-bb7b4b627afb95fd1119258217952303
+      - annotations:
+          description: PDB {{ $labels.namespace }}/{{ $labels.poddisruptionbudget }} expects {{ $values.A.Value }} more healthy pods. The desired number of healthy pods has not been met for at least 15m.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepdbnotenoughhealthypods
+          summary: PDB does not have enough healthy pods.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  kube_poddisruptionbudget_status_desired_healthy{job="kube-state-metrics"}
+                  -
+                  kube_poddisruptionbudget_status_current_healthy{job="kube-state-metrics"}
+                )
+                > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubePdbNotEnoughHealthyPods
+          severity: warning
+        noDataState: OK
+        title: KubePdbNotEnoughHealthyPods
+        uid: obs-40214358d077b255414de876975aa104
+  - folder: Kubernetes
+    interval: 1m
+    name: kubernetes-resources
+    orgId: 1
+    rules:
+      - annotations:
+          description: Cluster has overcommitted CPU resource requests for Pods by {{ printf "%.2f" $values.A.Value }} CPU shares and cannot tolerate node failure.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubecpuovercommit
+          summary: Cluster has overcommitted CPU resource requests.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  (
+                    sum(namespace_cpu:kube_pod_container_resource_requests:sum{})
+                    -
+                    sum(kube_node_status_allocatable{resource="cpu", job="kube-state-metrics"}) > 0
+                  )
+                  and
+                  count(max by (node) (kube_node_role{job="kube-state-metrics", role="control-plane"})) < 3
+                )
+                or
+                (
+                  sum(namespace_cpu:kube_pod_container_resource_requests:sum{})
+                  -
+                  (
+                    (
+                      sum(kube_node_status_allocatable{resource="cpu", job="kube-state-metrics"})
+                      -
+                      max(kube_node_status_allocatable{resource="cpu", job="kube-state-metrics"})
+                    ) > 0
+                  ) > 0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeCPUOvercommit
+          severity: warning
+        noDataState: OK
+        title: KubeCPUOvercommit
+        uid: obs-d91a40dc18fc4d44092cdefeb5e477c2
+      - annotations:
+          description: Cluster has overcommitted memory resource requests for Pods by {{ $values.A.Value | humanize }} bytes and cannot tolerate node failure.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubememoryovercommit
+          summary: Cluster has overcommitted memory resource requests.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  (
+                    sum(namespace_memory:kube_pod_container_resource_requests:sum{})
+                    -
+                    sum(kube_node_status_allocatable{resource="memory", job="kube-state-metrics"}) > 0
+                  )
+                  and
+                  count(max by (node) (kube_node_role{job="kube-state-metrics", role="control-plane"})) < 3
+                )
+                or
+                (
+                  sum(namespace_memory:kube_pod_container_resource_requests:sum{})
+                  -
+                  (
+                    (
+                      sum(kube_node_status_allocatable{resource="memory", job="kube-state-metrics"})
+                      -
+                      max(kube_node_status_allocatable{resource="memory", job="kube-state-metrics"})
+                    ) > 0
+                  ) > 0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeMemoryOvercommit
+          severity: warning
+        noDataState: OK
+        title: KubeMemoryOvercommit
+        uid: obs-6f8e0d4342fbff7423daff15f508dae2
+      - annotations:
+          description: Cluster has overcommitted CPU resource requests for Namespaces.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubecpuquotaovercommit
+          summary: Cluster has overcommitted CPU resource requests.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum (
+                  min without(resource) (kube_resourcequota{job="kube-state-metrics", type="hard", resource=~"(cpu|requests.cpu)"})
+                )
+                /
+                sum (
+                  kube_node_status_allocatable{resource="cpu", job="kube-state-metrics"}
+                ) > 1.5
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeCPUQuotaOvercommit
+          severity: warning
+        noDataState: OK
+        title: KubeCPUQuotaOvercommit
+        uid: obs-118377e6a7c98392e4a9b0da9bc80843
+      - annotations:
+          description: Cluster has overcommitted memory resource requests for Namespaces.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubememoryquotaovercommit
+          summary: Cluster has overcommitted memory resource requests.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum (
+                  min without(resource) (kube_resourcequota{job="kube-state-metrics", type="hard", resource=~"(memory|requests.memory)"})
+                )
+                /
+                sum (
+                  kube_node_status_allocatable{resource="memory", job="kube-state-metrics"}
+                ) > 1.5
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeMemoryQuotaOvercommit
+          severity: warning
+        noDataState: OK
+        title: KubeMemoryQuotaOvercommit
+        uid: obs-a7a400f310bc2a72f8a80d95e17cdc86
+      - annotations:
+          description: Namespace {{ $labels.namespace }} is using {{ $values.A.Value | humanizePercentage }} of its {{ $labels.resource }} quota.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubequotaalmostfull
+          summary: Namespace quota is going to be full.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                topk by (cluster, namespace, resource, resourcequota) (1,
+                  max without (instance, job, type) (
+                    kube_resourcequota{job="kube-state-metrics", type="used"}
+                  )
+                )
+                / on (cluster, namespace, resource, resourcequota) group_left()
+                topk by (cluster, namespace, resource, resourcequota) (1,
+                  max without (instance, job, type) (
+                    kube_resourcequota{job="kube-state-metrics", type="hard"}
+                  ) > 0
+                )
+                > 0.9 < 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeQuotaAlmostFull
+          severity: info
+        noDataState: OK
+        title: KubeQuotaAlmostFull
+        uid: obs-1e836f615627b6830fcfc72702f4685c
+      - annotations:
+          description: Namespace {{ $labels.namespace }} is using {{ $values.A.Value | humanizePercentage }} of its {{ $labels.resource }} quota.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubequotafullyused
+          summary: Namespace quota is fully used.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                topk by (cluster, namespace, resource, resourcequota) (1,
+                  max without (instance, job, type) (
+                    kube_resourcequota{job="kube-state-metrics", type="used"}
+                  )
+                )
+                / on (cluster, namespace, resource, resourcequota) group_left()
+                topk by (cluster, namespace, resource, resourcequota) (1,
+                  max without (instance, job, type) (
+                    kube_resourcequota{job="kube-state-metrics", type="hard"}
+                  ) > 0
+                )
+                == 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeQuotaFullyUsed
+          severity: info
+        noDataState: OK
+        title: KubeQuotaFullyUsed
+        uid: obs-e848027bdd8ff6e6db3c95a6cde0a26a
+      - annotations:
+          description: Namespace {{ $labels.namespace }} is using {{ $values.A.Value | humanizePercentage }} of its {{ $labels.resource }} quota.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubequotaexceeded
+          summary: Namespace quota has exceeded the limits.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                topk by (cluster, namespace, resource, resourcequota) (1,
+                  max without (instance, job, type) (
+                    kube_resourcequota{job="kube-state-metrics", type="used"}
+                  )
+                )
+                / on (cluster, namespace, resource, resourcequota) group_left()
+                topk by (cluster, namespace, resource, resourcequota) (1,
+                  max without (instance, job, type) (
+                    kube_resourcequota{job="kube-state-metrics", type="hard"}
+                  ) > 0
+                ) > 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeQuotaExceeded
+          severity: warning
+        noDataState: OK
+        title: KubeQuotaExceeded
+        uid: obs-c338c88f97880f46b04c1fde8eadcebc
+      - annotations:
+          description: "{{ $values.A.Value | humanizePercentage }} throttling of CPU in namespace {{ $labels.namespace }} for container {{ $labels.container }} in pod {{ $labels.pod }}."
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-cputhrottlinghigh
+          summary: Processes experience elevated CPU throttling.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum without (id, metrics_path, name, image, endpoint, job, node) (
+                  topk by (cluster, namespace, pod, container, instance) (1,
+                    increase(
+                      container_cpu_cfs_throttled_periods_total{container!="", job="cadvisor", }
+                    [5m])
+                  )
+                )
+                / on (cluster, namespace, pod, container, instance) group_left
+                sum without (id, metrics_path, name, image, endpoint, job, node) (
+                  topk by (cluster, namespace, pod, container, instance) (1,
+                    increase(
+                      container_cpu_cfs_periods_total{job="cadvisor", }
+                    [5m])
+                  )
+                )
+                > ( 25 / 100 )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: CPUThrottlingHigh
+          severity: info
+        noDataState: OK
+        title: CPUThrottlingHigh
+        uid: obs-6b310c29b21899d074c320a898d4393f
+  - folder: Kubernetes
+    interval: 1m
+    name: kubernetes-storage
+    orgId: 1
+    rules:
+      - annotations:
+          description: The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} {{ with $labels.cluster -}} on Cluster {{ . }} {{- end }} is only {{ $values.A.Value | humanizePercentage }} free.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumefillingup
+          summary: PersistentVolume is filling up.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  kubelet_volume_stats_available_bytes{job="kubelet"}
+                    /
+                  kubelet_volume_stats_capacity_bytes{job="kubelet"}
+                ) < 0.03
+                and
+                kubelet_volume_stats_used_bytes{job="kubelet"} > 0
+                unless on(cluster, namespace, persistentvolumeclaim)
+                kube_persistentvolumeclaim_access_mode{ access_mode="ReadOnlyMany"} == 1
+                unless on(cluster, namespace, persistentvolumeclaim)
+                kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"} == 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubePersistentVolumeFillingUp
+          severity: critical
+        noDataState: OK
+        title: KubePersistentVolumeFillingUp (severity=critical)
+        uid: obs-8b60c7aed464193a9d0839453b9d50f5
+      - annotations:
+          description: Based on recent sampling, the PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} {{ with $labels.cluster -}} on Cluster {{ . }} {{- end }} is expected to fill up within four days. Currently {{ $values.A.Value | humanizePercentage }} is available.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumefillingup
+          summary: PersistentVolume is filling up.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  kubelet_volume_stats_available_bytes{job="kubelet"}
+                    /
+                  kubelet_volume_stats_capacity_bytes{job="kubelet"}
+                ) < 0.15
+                and
+                kubelet_volume_stats_used_bytes{job="kubelet"} > 0
+                and
+                predict_linear(kubelet_volume_stats_available_bytes{job="kubelet"}[6h], 4 * 24 * 3600) < 0
+                unless on(cluster, namespace, persistentvolumeclaim)
+                kube_persistentvolumeclaim_access_mode{ access_mode="ReadOnlyMany"} == 1
+                unless on(cluster, namespace, persistentvolumeclaim)
+                kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"} == 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubePersistentVolumeFillingUp
+          severity: warning
+        noDataState: OK
+        title: KubePersistentVolumeFillingUp (severity=warning)
+        uid: obs-b3898822b465fd01199d85d4b38cebed
+      - annotations:
+          description: The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} {{ with $labels.cluster -}} on Cluster {{ . }} {{- end }} only has {{ $values.A.Value | humanizePercentage }} free inodes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumeinodesfillingup
+          summary: PersistentVolumeInodes are filling up.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  kubelet_volume_stats_inodes_free{job="kubelet"}
+                    /
+                  kubelet_volume_stats_inodes{job="kubelet"}
+                ) < 0.03
+                and
+                kubelet_volume_stats_inodes_used{job="kubelet"} > 0
+                unless on(cluster, namespace, persistentvolumeclaim)
+                kube_persistentvolumeclaim_access_mode{ access_mode="ReadOnlyMany"} == 1
+                unless on(cluster, namespace, persistentvolumeclaim)
+                kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"} == 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubePersistentVolumeInodesFillingUp
+          severity: critical
+        noDataState: OK
+        title: KubePersistentVolumeInodesFillingUp (severity=critical)
+        uid: obs-e7ca2b459d861377f2ab9d1cd83a1e19
+      - annotations:
+          description: Based on recent sampling, the PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} {{ with $labels.cluster -}} on Cluster {{ . }} {{- end }} is expected to run out of inodes within four days. Currently {{ $values.A.Value | humanizePercentage }} of its inodes are free.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumeinodesfillingup
+          summary: PersistentVolumeInodes are filling up.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  kubelet_volume_stats_inodes_free{job="kubelet"}
+                    /
+                  kubelet_volume_stats_inodes{job="kubelet"}
+                ) < 0.15
+                and
+                kubelet_volume_stats_inodes_used{job="kubelet"} > 0
+                and
+                predict_linear(kubelet_volume_stats_inodes_free{job="kubelet"}[6h], 4 * 24 * 3600) < 0
+                unless on(cluster, namespace, persistentvolumeclaim)
+                kube_persistentvolumeclaim_access_mode{ access_mode="ReadOnlyMany"} == 1
+                unless on(cluster, namespace, persistentvolumeclaim)
+                kube_persistentvolumeclaim_labels{label_excluded_from_alerts="true"} == 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubePersistentVolumeInodesFillingUp
+          severity: warning
+        noDataState: OK
+        title: KubePersistentVolumeInodesFillingUp (severity=warning)
+        uid: obs-3369b355eba60b35a5d05f2e94b0edf8
+      - annotations:
+          description: The persistent volume {{ $labels.persistentvolume }} {{ with $labels.cluster -}} on Cluster {{ . }} {{- end }} has status {{ $labels.phase }}.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepersistentvolumeerrors
+          summary: PersistentVolume is having issues with provisioning.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kube_persistentvolume_status_phase{phase=~"Failed|Pending",job="kube-state-metrics"} > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubePersistentVolumeErrors
+          severity: critical
+        noDataState: OK
+        title: KubePersistentVolumeErrors
+        uid: obs-040191293daca3ebfe98f442220cced6
+  - folder: Kubernetes
+    interval: 1m
+    name: kubernetes-system
+    orgId: 1
+    rules:
+      - annotations:
+          description: There are {{ $values.A.Value }} different semantic versions of Kubernetes components running.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeversionmismatch
+          summary: Different semantic versions of Kubernetes components running.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                count by (cluster) (count by (git_version, cluster) (label_replace(kubernetes_build_info{job!~"kube-dns|coredns"},"git_version","$1","git_version","(v[0-9]*.[0-9]*).*"))) > 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeVersionMismatch
+          severity: warning
+        noDataState: OK
+        title: KubeVersionMismatch
+        uid: obs-c09cab0d6b7d44b33c82b2884b004a66
+      - annotations:
+          description: Kubernetes API server client '{{ $labels.job }}/{{ $labels.instance }}' is experiencing {{ $values.A.Value | humanizePercentage }} errors.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeclienterrors
+          summary: Kubernetes API server client is experiencing errors.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (sum(rate(rest_client_requests_total{job="kube-apiserver",code=~"5.."}[5m])) by (cluster, instance, job, namespace)
+                  /
+                sum(rate(rest_client_requests_total{job="kube-apiserver"}[5m])) by (cluster, instance, job, namespace))
+                > 0.01
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeClientErrors
+          severity: warning
+        noDataState: OK
+        title: KubeClientErrors
+        uid: obs-4de272a230f5faf8ce6d7269ddbc8439
+  - folder: Kubernetes
+    interval: 1m
+    name: kube-apiserver-slos
+    orgId: 1
+    rules:
+      - annotations:
+          description: The Kube API server is burning too much error budget.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorbudgetburn
+          summary: The Kube API server is burning too much error budget.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum by(cluster) (apiserver_request:burnrate1h) > (14.40 * 0.01000)
+                and on(cluster)
+                sum by(cluster) (apiserver_request:burnrate5m) > (14.40 * 0.01000)
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 2m
+        isPaused: true
+        labels:
+          long: 1h
+          owner: grafana
+          prometheus_alertname: KubeAPIErrorBudgetBurn
+          severity: critical
+          short: 5m
+        noDataState: OK
+        title: KubeAPIErrorBudgetBurn (long=1h, severity=critical, short=5m)
+        uid: obs-cd0610827a009959539ca8f1fd7a982b
+      - annotations:
+          description: The Kube API server is burning too much error budget.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorbudgetburn
+          summary: The Kube API server is burning too much error budget.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum by(cluster) (apiserver_request:burnrate6h) > (6.00 * 0.01000)
+                and on(cluster)
+                sum by(cluster) (apiserver_request:burnrate30m) > (6.00 * 0.01000)
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          long: 6h
+          owner: grafana
+          prometheus_alertname: KubeAPIErrorBudgetBurn
+          severity: critical
+          short: 30m
+        noDataState: OK
+        title: KubeAPIErrorBudgetBurn (long=6h, severity=critical, short=30m)
+        uid: obs-e8e983ce68b1c2849c8a1d6bfc461b50
+      - annotations:
+          description: The Kube API server is burning too much error budget.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorbudgetburn
+          summary: The Kube API server is burning too much error budget.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum by(cluster) (apiserver_request:burnrate1d) > (3.00 * 0.01000)
+                and on(cluster)
+                sum by(cluster) (apiserver_request:burnrate2h) > (3.00 * 0.01000)
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          long: 1d
+          owner: grafana
+          prometheus_alertname: KubeAPIErrorBudgetBurn
+          severity: warning
+          short: 2h
+        noDataState: OK
+        title: KubeAPIErrorBudgetBurn (long=1d, severity=warning, short=2h)
+        uid: obs-dcc3691b21e0f8131b95875b523c0267
+      - annotations:
+          description: The Kube API server is burning too much error budget.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorbudgetburn
+          summary: The Kube API server is burning too much error budget.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum by(cluster) (apiserver_request:burnrate3d) > (1.00 * 0.01000)
+                and on(cluster)
+                sum by(cluster) (apiserver_request:burnrate6h) > (1.00 * 0.01000)
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 3h
+        isPaused: true
+        labels:
+          long: 3d
+          owner: grafana
+          prometheus_alertname: KubeAPIErrorBudgetBurn
+          severity: warning
+          short: 6h
+        noDataState: OK
+        title: KubeAPIErrorBudgetBurn (long=3d, severity=warning, short=6h)
+        uid: obs-c1eb282df856ed738e0247411cbd5838
+  - folder: Kubernetes
+    interval: 1m
+    name: kubernetes-system-apiserver
+    orgId: 1
+    rules:
+      - annotations:
+          description: A client certificate used to authenticate to kubernetes apiserver is expiring in less than 7.0 days.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeclientcertificateexpiration
+          summary: Client certificate is about to expire.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                histogram_quantile(0.01, sum without (namespace, service, endpoint) (rate(apiserver_client_certificate_expiration_seconds_bucket{job="kube-apiserver"}[5m]))) < 604800
+                and
+                on(job, cluster, instance) apiserver_client_certificate_expiration_seconds_count{job="kube-apiserver"} > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeClientCertificateExpiration
+          severity: warning
+        noDataState: OK
+        title: KubeClientCertificateExpiration (severity=warning)
+        uid: obs-0e413d6502db1399b00354199f8cbd13
+      - annotations:
+          description: A client certificate used to authenticate to kubernetes apiserver is expiring in less than 24.0 hours.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeclientcertificateexpiration
+          summary: Client certificate is about to expire.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                histogram_quantile(0.01, sum without (namespace, service, endpoint) (rate(apiserver_client_certificate_expiration_seconds_bucket{job="kube-apiserver"}[5m]))) < 86400
+                and
+                on(job, cluster, instance) apiserver_client_certificate_expiration_seconds_count{job="kube-apiserver"} > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeClientCertificateExpiration
+          severity: critical
+        noDataState: OK
+        title: KubeClientCertificateExpiration (severity=critical)
+        uid: obs-95fa279d0c7de23fc19dffc8ffe06b74
+      - annotations:
+          description: Kubernetes aggregated API {{ $labels.instance }}/{{ $labels.name }} has reported {{ $labels.reason }} errors.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeaggregatedapierrors
+          summary: Kubernetes aggregated API has reported errors.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum by(cluster, instance, name, reason)(increase(aggregator_unavailable_apiservice_total{job="kube-apiserver"}[1m])) > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeAggregatedAPIErrors
+          severity: warning
+        noDataState: OK
+        title: KubeAggregatedAPIErrors
+        uid: obs-79618facc3db3df878dce5e8355a2823
+      - annotations:
+          description: Kubernetes aggregated API {{ $labels.name }}/{{ $labels.namespace }} has been only {{ $values.A.Value | humanize }}% available over the last 10m.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeaggregatedapidown
+          summary: Kubernetes aggregated API is down.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (1 - max by(name, namespace, cluster)(avg_over_time(aggregator_unavailable_apiservice{job="kube-apiserver"}[10m]))) * 100 < 85
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeAggregatedAPIDown
+          severity: warning
+        noDataState: OK
+        title: KubeAggregatedAPIDown
+        uid: obs-aaf37eb812cef5dd2084a9df716ebf5a
+      - annotations:
+          description: KubeAPI has disappeared from Prometheus target discovery.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapidown
+          summary: Target disappeared from Prometheus target discovery.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                absent(up{job="kube-apiserver"})
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeAPIDown
+          severity: critical
+        noDataState: OK
+        title: KubeAPIDown
+        uid: obs-4008a8fc0623e982222bda39d80bceeb
+      - annotations:
+          description: A KubeAPI instance has been unreachable for more than 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapiinstanceunreachable
+          summary: KubeAPI instance is unreachable.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                up{job="kube-apiserver"} == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeAPIInstanceUnreachable
+          severity: warning
+        noDataState: OK
+        title: KubeAPIInstanceUnreachable
+        uid: obs-dabcb9ab359ef2bcd6c7287de4e5b38a
+      - annotations:
+          description: The kubernetes apiserver has terminated {{ $values.A.Value | humanizePercentage }} of its incoming requests.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapiterminatedrequests
+          summary: The kubernetes apiserver has terminated {{ $values.A.Value | humanizePercentage }} of its incoming requests.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum by(cluster) (rate(apiserver_request_terminations_total{job="kube-apiserver"}[10m])) / ( sum by(cluster) (rate(apiserver_request_total{job="kube-apiserver"}[10m])) + sum by(cluster) (rate(apiserver_request_terminations_total{job="kube-apiserver"}[10m])) ) > 0.20
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeAPITerminatedRequests
+          severity: warning
+        noDataState: OK
+        title: KubeAPITerminatedRequests
+        uid: obs-27496cf2f1068c03275707e4e25234c8
+  - folder: Kubernetes
+    interval: 1m
+    name: kubernetes-system-kubelet
+    orgId: 1
+    rules:
+      - annotations:
+          description: "{{ $labels.node }} has been unready for more than 15 minutes."
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodenotready
+          summary: Node is not ready.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kube_node_status_condition{job="kube-state-metrics",condition="Ready",status="true"} == 0
+                and on (cluster, node)
+                kube_node_spec_unschedulable{job="kube-state-metrics"} == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeNodeNotReady
+          severity: warning
+        noDataState: OK
+        title: KubeNodeNotReady
+        uid: obs-38a8c030d387216e1b585c08718c8148
+      - annotations:
+          description: "{{ $labels.node }} has active Condition {{ $labels.condition }}. This is caused by resource usage exceeding eviction thresholds."
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepressure
+          summary: Node has as active Condition.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kube_node_status_condition{job="kube-state-metrics",condition=~"(MemoryPressure|DiskPressure|PIDPressure)",status="true"} == 1
+                and on (cluster, node)
+                kube_node_spec_unschedulable{job="kube-state-metrics"} == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeNodePressure
+          severity: info
+        noDataState: OK
+        title: KubeNodePressure
+        uid: obs-19efa5bd5cfb7f47c28f027b9b35021d
+      - annotations:
+          description: "{{ $labels.node }} is unreachable and some workloads may be rescheduled."
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodeunreachable
+          summary: Node is unreachable.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (kube_node_spec_taint{job="kube-state-metrics",key="node.kubernetes.io/unreachable",effect="NoSchedule"} unless ignoring(key,value) kube_node_spec_taint{job="kube-state-metrics",key=~"ToBeDeletedByClusterAutoscaler|cloud.google.com/impending-node-termination|aws-node-termination-handler/spot-itn"}) == 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeNodeUnreachable
+          severity: warning
+        noDataState: OK
+        title: KubeNodeUnreachable
+        uid: obs-750454cdd1575796fe1a8ae45608ef1c
+      - annotations:
+          description: Kubelet '{{ $labels.node }}' is running at {{ $values.A.Value | humanizePercentage }} of its Pod capacity.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubelettoomanypods
+          summary: Kubelet is running at capacity.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  max by (cluster, instance) (
+                    kubelet_running_pods{job="kubelet"} > 1
+                  )
+                  * on (cluster, instance) group_left(node)
+                  max by (cluster, instance, node) (
+                    kubelet_node_name{job="kubelet"}
+                  )
+                )
+                / on (cluster, node) group_left()
+                max by (cluster, node) (
+                  kube_node_status_capacity{job="kube-state-metrics", resource="pods"} != 1
+                ) > 0.95
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeletTooManyPods
+          severity: info
+        noDataState: OK
+        title: KubeletTooManyPods
+        uid: obs-6570359cf2e7a1ef63b9a3afd6862685
+      - annotations:
+          description: The readiness status of node {{ $labels.node }} has changed {{ $values.A.Value }} times in the last 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodereadinessflapping
+          summary: Node readiness status is flapping.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum(changes(kube_node_status_condition{job="kube-state-metrics",status="true",condition="Ready"}[15m])) by (cluster, node) > 2
+                and on (cluster, node)
+                kube_node_spec_unschedulable{job="kube-state-metrics"} == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeNodeReadinessFlapping
+          severity: warning
+        noDataState: OK
+        title: KubeNodeReadinessFlapping
+        uid: obs-9d648e352d5d26f73655c304895c2cd4
+      - annotations:
+          description: Node {{ $labels.node }} is evicting Pods due to {{ $labels.eviction_signal }}.  Eviction occurs when eviction thresholds are crossed, typically caused by Pods exceeding RAM/ephemeral-storage limits.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodeeviction
+          summary: Node is evicting pods.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum(rate(kubelet_evictions{job="kubelet"}[15m])) by(cluster, eviction_signal, instance)
+                * on (cluster, instance) group_left(node)
+                max by (cluster, instance, node) (
+                  kubelet_node_name{job="kubelet"}
+                )
+                > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 0s
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeNodeEviction
+          severity: info
+        noDataState: OK
+        title: KubeNodeEviction
+        uid: obs-9660a37900f58c682f9d03abe5befd72
+      - annotations:
+          description: The Kubelet Pod Lifecycle Event Generator has a 99th percentile duration of {{ $values.A.Value }} seconds on node {{ $labels.node }}.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletplegdurationhigh
+          summary: Kubelet Pod Lifecycle Event Generator is taking too long to relist.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                node_quantile:kubelet_pleg_relist_duration_seconds:histogram_quantile{quantile="0.99"} >= 10
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeletPlegDurationHigh
+          severity: warning
+        noDataState: OK
+        title: KubeletPlegDurationHigh
+        uid: obs-a3afad880cad3f4278622f0e261d7b95
+      - annotations:
+          description: Kubelet Pod startup 99th percentile latency is {{ $values.A.Value }} seconds on node {{ $labels.node }}.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletpodstartuplatencyhigh
+          summary: Kubelet Pod startup latency is too high.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                histogram_quantile(0.99,
+                  sum by (cluster, instance, le) (
+                    topk by (cluster, instance, le, operation_type) (1,
+                      rate(kubelet_pod_worker_duration_seconds_bucket{job="kubelet"}[5m])
+                    )
+                  )
+                )
+                * on(cluster, instance) group_left(node)
+                topk by (cluster, instance, node) (1,
+                  kubelet_node_name{job="kubelet"}
+                )
+                > 60
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeletPodStartUpLatencyHigh
+          severity: warning
+        noDataState: OK
+        title: KubeletPodStartUpLatencyHigh
+        uid: obs-4914f757b28f2033b4553c4b03805d9e
+      - annotations:
+          description: Client certificate for Kubelet on node {{ $labels.node }} expires in {{ $values.A.Value | humanizeDuration }}.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletclientcertificateexpiration
+          summary: Kubelet client certificate is about to expire.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kubelet_certificate_manager_client_ttl_seconds < 604800
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 0s
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeletClientCertificateExpiration
+          severity: warning
+        noDataState: OK
+        title: KubeletClientCertificateExpiration (severity=warning)
+        uid: obs-d98dc9852b2522f53f208dc47d18c7f6
+      - annotations:
+          description: Client certificate for Kubelet on node {{ $labels.node }} expires in {{ $values.A.Value | humanizeDuration }}.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletclientcertificateexpiration
+          summary: Kubelet client certificate is about to expire.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kubelet_certificate_manager_client_ttl_seconds < 86400
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 0s
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeletClientCertificateExpiration
+          severity: critical
+        noDataState: OK
+        title: KubeletClientCertificateExpiration (severity=critical)
+        uid: obs-f6c5f914dc65478bc75caa8f723b3b8d
+      - annotations:
+          description: Server certificate for Kubelet on node {{ $labels.node }} expires in {{ $values.A.Value | humanizeDuration }}.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletservercertificateexpiration
+          summary: Kubelet server certificate is about to expire.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kubelet_certificate_manager_server_ttl_seconds < 604800
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 0s
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeletServerCertificateExpiration
+          severity: warning
+        noDataState: OK
+        title: KubeletServerCertificateExpiration (severity=warning)
+        uid: obs-bb6770ad065155f2618bc8b3d5cfabe3
+      - annotations:
+          description: Server certificate for Kubelet on node {{ $labels.node }} expires in {{ $values.A.Value | humanizeDuration }}.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletservercertificateexpiration
+          summary: Kubelet server certificate is about to expire.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                kubelet_certificate_manager_server_ttl_seconds < 86400
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 0s
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeletServerCertificateExpiration
+          severity: critical
+        noDataState: OK
+        title: KubeletServerCertificateExpiration (severity=critical)
+        uid: obs-f49da299a9a5c4ce32a37b4b6d9779d5
+      - annotations:
+          description: Kubelet on node {{ $labels.node }} has failed to renew its client certificate ({{ $values.A.Value | humanize }} errors in the last 5 minutes).
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletclientcertificaterenewalerrors
+          summary: Kubelet has failed to renew its client certificate.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                increase(kubelet_certificate_manager_client_expiration_renew_errors[5m]) > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeletClientCertificateRenewalErrors
+          severity: warning
+        noDataState: OK
+        title: KubeletClientCertificateRenewalErrors
+        uid: obs-124800509a8a2a53e96679d7419d7559
+      - annotations:
+          description: Kubelet on node {{ $labels.node }} has failed to renew its server certificate ({{ $values.A.Value | humanize }} errors in the last 5 minutes).
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletservercertificaterenewalerrors
+          summary: Kubelet has failed to renew its server certificate.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                increase(kubelet_server_expiration_renew_errors[5m]) > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeletServerCertificateRenewalErrors
+          severity: warning
+        noDataState: OK
+        title: KubeletServerCertificateRenewalErrors
+        uid: obs-5cc70837571077d1bb6d42c61e76a511
+      - annotations:
+          description: A Kubelet instance has been unreachable for more than 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletinstanceunreachable
+          summary: Kubelet instance is unreachable.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                up{job="kubelet"} == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeletInstanceUnreachable
+          severity: warning
+        noDataState: OK
+        title: KubeletInstanceUnreachable
+        uid: obs-f4c653044837200ce15fee21d3f8e599
+      - annotations:
+          description: Kubelet has disappeared from Prometheus target discovery.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeletdown
+          summary: Target disappeared from Prometheus target discovery.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                count by (cluster) (kube_node_info{job="kube-state-metrics"})
+                unless on (cluster)
+                count by (cluster) (up{job="kubelet"} == 1)
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeletDown
+          severity: critical
+        noDataState: OK
+        title: KubeletDown
+        uid: obs-3ac36dc5d2bdc48841aa0be5073fb0b2
+  - folder: Kubernetes
+    interval: 1m
+    name: kubernetes-system-scheduler
+    orgId: 1
+    rules:
+      - annotations:
+          description: KubeScheduler has disappeared from Prometheus target discovery.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeschedulerdown
+          summary: Target disappeared from Prometheus target discovery.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                absent(up{job="kube-scheduler"})
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeSchedulerDown
+          severity: critical
+        noDataState: OK
+        title: KubeSchedulerDown
+        uid: obs-e657e295a9b01710aab98c9e9bb8eda4
+      - annotations:
+          description: A KubeScheduler instance has been unreachable for more than 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeschedulerinstanceunreachable
+          summary: KubeScheduler instance is unreachable.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                up{job="kube-scheduler"} == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeSchedulerInstanceUnreachable
+          severity: warning
+        noDataState: OK
+        title: KubeSchedulerInstanceUnreachable
+        uid: obs-40aff7f6a1430004c2738338914b34fb
+  - folder: Kubernetes
+    interval: 1m
+    name: kubernetes-system-controller-manager
+    orgId: 1
+    rules:
+      - annotations:
+          description: KubeControllerManager has disappeared from Prometheus target discovery.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubecontrollermanagerdown
+          summary: Target disappeared from Prometheus target discovery.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                absent(up{job="kube-controller-manager"})
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeControllerManagerDown
+          severity: critical
+        noDataState: OK
+        title: KubeControllerManagerDown
+        uid: obs-0c4192db347a79650ee3fa12567ced89
+      - annotations:
+          description: A KubeControllerManager instance has been unreachable for more than 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubecontrollermanagerinstanceunreachable
+          summary: KubeControllerManager instance is unreachable.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                up{job="kube-controller-manager"} == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeControllerManagerInstanceUnreachable
+          severity: warning
+        noDataState: OK
+        title: KubeControllerManagerInstanceUnreachable
+        uid: obs-1b0ae5bd7f17c53fbdf96caf0f7a078b
+  - folder: Kubernetes
+    interval: 1m
+    name: kubernetes-system-kube-proxy
+    orgId: 1
+    rules:
+      - annotations:
+          description: KubeProxy has disappeared from Prometheus target discovery.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeproxydown
+          summary: Target disappeared from Prometheus target discovery.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                absent(up{job="kube-proxy"})
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeProxyDown
+          severity: critical
+        noDataState: OK
+        title: KubeProxyDown
+        uid: obs-b06e5ec417eafe4ba9ddae1c7e4a39e3
+      - annotations:
+          description: A KubeProxy instance has been unreachable for more than 15 minutes.
+          runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeproxyinstanceunreachable
+          summary: KubeProxy instance is unreachable.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                up{job="kube-proxy"} == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: KubeProxyInstanceUnreachable
+          severity: warning
+        noDataState: OK
+        title: KubeProxyInstanceUnreachable
+        uid: obs-a2362e12032a740b13a2434d19895cad

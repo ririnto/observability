@@ -1,0 +1,13 @@
+groups:
+  - interval: 1m
+    name: Vector pipeline
+    rules:
+      - alert: VectorComponentErrors
+        annotations:
+          description: Inspect the error type, component logs, and pipeline inputs before enabling notifications.
+          summary: Vector records sustained component errors.
+        expr: sum(rate(vector_component_errors_total{job="vector"}[5m])) > 0
+        for: 10m
+        labels:
+          owner: prometheus
+          severity: warning
