@@ -12,7 +12,7 @@ tasks:
   check:rules:
     cmds:
       - go tool promtool check rules --lint-fatal rendered/*-rules.yaml
-      - go tool promtool test rules tests/prometheus/rules.yaml
+      - go tool promtool test rules tests/prometheus/*.yaml
   check:alert-parity:
     cmds:
       - go run ./cmd/alertparity rendered

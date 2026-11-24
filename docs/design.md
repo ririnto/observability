@@ -31,9 +31,23 @@ The Kubernetes dashboards and alert definitions come from the mixin.
 The existing static-target dashboard and bespoke alerts describe scrape jobs, exporter states, and Vector pipeline metrics specific to the static targets.
 The Kubernetes mixin has no definitions for those signals.
 
+## Node Exporter inputs
+
+Generation pins the [Node Exporter v1.13.1 mixin](https://github.com/prometheus/node_exporter/tree/0192dd896337e6eeb5935024cd5d8aec431caf3a/docs/node-mixin) by commit.
+The Node Exporter release has no Jsonnet lockfile.
+Generation requires its dependency manifest to match the Kubernetes manifest and uses the Kubernetes lockfile for both.
+CI caches the Jsonnet dependencies. Jsonnet Bundler checks package checksums before reuse, and generation compares the resolved lockfile with the upstream copy.
+The repository retains the [Node Exporter license](../licenses/node-exporter-LICENSE) and [notice](../licenses/node-exporter-NOTICE).
+
+The adapter uses the repository's `node-exporter` job name and evaluates alerts once per minute.
+The existing `NodeTextFileCollectorScrapeError` pair covers the upstream textfile signal with a five-minute pending period and a scrape-reachability check.
+The network error annotations report percentages because the upstream queries return ratios.
+Promtool tests exercise both severity variants where present, pending and recovery behavior, and a recording rule used by the USE Method dashboards.
+
 ## Alert evaluation
 
 Grafana evaluates the Prometheus alert expression as an instant query and triggers for each returned sample, including a zero-valued sample.
+For example, `NodeClockNotSynchronising` returns zero when the clock is unsynchronised.
 The Vector rule keeps its existing Grafana query and `> 0` Math condition.
 Prometheus applies the same comparison in PromQL.
 The Grafana adapter rewrites the Prometheus annotation variable `$value` to `$values.A.Value`.

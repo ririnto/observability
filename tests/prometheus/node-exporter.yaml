@@ -1,0 +1,519 @@
+rule_files:
+  - ../../rendered/node-exporter-recording-rules.yaml
+  - ../../rendered/node-exporter-alert-rules.yaml
+evaluation_interval: 1m
+tests:
+  - name: declining filesystem space and inodes fire after one hour and clear when reclaimed
+    interval: 1m
+    input_series:
+      - series: node_filesystem_avail_bytes{job="node-exporter",instance="fixture",device="sda",mountpoint="/data",fstype="ext4"}
+        values: 180-1x61 600
+      - series: node_filesystem_size_bytes{job="node-exporter",instance="fixture",device="sda",mountpoint="/data",fstype="ext4"}
+        values: 1000+0x62
+      - series: node_filesystem_files_free{job="node-exporter",instance="fixture",device="sda",mountpoint="/data",fstype="ext4"}
+        values: 180-1x61 600
+      - series: node_filesystem_files{job="node-exporter",instance="fixture",device="sda",mountpoint="/data",fstype="ext4"}
+        values: 1000+0x62
+      - series: node_filesystem_readonly{job="node-exporter",instance="fixture",device="sda",mountpoint="/data",fstype="ext4"}
+        values: 0+0x62
+      - series: node_filesystem_avail_bytes{job="node-exporter",instance="fixture",device="sdb",mountpoint="/backup",fstype="ext4"}
+        values: 300-1x61 600
+      - series: node_filesystem_size_bytes{job="node-exporter",instance="fixture",device="sdb",mountpoint="/backup",fstype="ext4"}
+        values: 1000+0x62
+      - series: node_filesystem_files_free{job="node-exporter",instance="fixture",device="sdb",mountpoint="/backup",fstype="ext4"}
+        values: 300-1x61 600
+      - series: node_filesystem_files{job="node-exporter",instance="fixture",device="sdb",mountpoint="/backup",fstype="ext4"}
+        values: 1000+0x62
+      - series: node_filesystem_readonly{job="node-exporter",instance="fixture",device="sdb",mountpoint="/backup",fstype="ext4"}
+        values: 0+0x62
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: NodeFilesystemSpaceFillingUp
+      - eval_time: 60m
+        alertname: NodeFilesystemFilesFillingUp
+      - eval_time: 61m
+        alertname: NodeFilesystemSpaceFillingUp
+        exp_alerts:
+          - exp_labels: &dataWarning
+              job: node-exporter
+              instance: fixture
+              device: sda
+              mountpoint: /data
+              fstype: ext4
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: Filesystem is predicted to run out of space within the next 24 hours.
+              description: Filesystem on sda, mounted on /data, at fixture has only 11.90% available space left and is filling up.
+          - exp_labels: &dataCritical
+              job: node-exporter
+              instance: fixture
+              device: sda
+              mountpoint: /data
+              fstype: ext4
+              owner: prometheus
+              severity: critical
+            exp_annotations:
+              summary: Filesystem is predicted to run out of space within the next 4 hours.
+              description: Filesystem on sda, mounted on /data, at fixture has only 11.90% available space left and is filling up fast.
+          - exp_labels: &backupWarning
+              job: node-exporter
+              instance: fixture
+              device: sdb
+              mountpoint: /backup
+              fstype: ext4
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: Filesystem is predicted to run out of space within the next 24 hours.
+              description: Filesystem on sdb, mounted on /backup, at fixture has only 23.90% available space left and is filling up.
+      - eval_time: 61m
+        alertname: NodeFilesystemFilesFillingUp
+        exp_alerts:
+          - exp_labels: *dataWarning
+            exp_annotations:
+              summary: Filesystem is predicted to run out of inodes within the next 24 hours.
+              description: Filesystem on sda, mounted on /data, at fixture has only 11.90% available inodes left and is filling up.
+          - exp_labels: *dataCritical
+            exp_annotations:
+              summary: Filesystem is predicted to run out of inodes within the next 4 hours.
+              description: Filesystem on sda, mounted on /data, at fixture has only 11.90% available inodes left and is filling up fast.
+          - exp_labels: *backupWarning
+            exp_annotations:
+              summary: Filesystem is predicted to run out of inodes within the next 24 hours.
+              description: Filesystem on sdb, mounted on /backup, at fixture has only 23.90% available inodes left and is filling up.
+      - eval_time: 62m
+        alertname: NodeFilesystemSpaceFillingUp
+      - eval_time: 62m
+        alertname: NodeFilesystemFilesFillingUp
+  - name: low space and inodes fire on writable filesystems and clear on recovery
+    interval: 1m
+    input_series:
+      - series: node_filesystem_avail_bytes{job="node-exporter",instance="fixture",device="sda",mountpoint="/data",fstype="ext4"}
+        values: 20+0x60 60
+      - series: node_filesystem_size_bytes{job="node-exporter",instance="fixture",device="sda",mountpoint="/data",fstype="ext4"}
+        values: 1000+0x61
+      - series: node_filesystem_files_free{job="node-exporter",instance="fixture",device="sda",mountpoint="/data",fstype="ext4"}
+        values: 20+0x60 60
+      - series: node_filesystem_files{job="node-exporter",instance="fixture",device="sda",mountpoint="/data",fstype="ext4"}
+        values: 1000+0x61
+      - series: node_filesystem_readonly{job="node-exporter",instance="fixture",device="sda",mountpoint="/data",fstype="ext4"}
+        values: 0+0x61
+      - series: node_filesystem_avail_bytes{job="node-exporter",instance="fixture",device="sdb",mountpoint="/backup",fstype="ext4"}
+        values: 10+0x61
+      - series: node_filesystem_size_bytes{job="node-exporter",instance="fixture",device="sdb",mountpoint="/backup",fstype="ext4"}
+        values: 1000+0x61
+      - series: node_filesystem_files_free{job="node-exporter",instance="fixture",device="sdb",mountpoint="/backup",fstype="ext4"}
+        values: 10+0x61
+      - series: node_filesystem_files{job="node-exporter",instance="fixture",device="sdb",mountpoint="/backup",fstype="ext4"}
+        values: 1000+0x61
+      - series: node_filesystem_readonly{job="node-exporter",instance="fixture",device="sdb",mountpoint="/backup",fstype="ext4"}
+        values: 1+0x61
+    alert_rule_test:
+      - eval_time: 29m
+        alertname: NodeFilesystemAlmostOutOfSpace
+      - eval_time: 30m
+        alertname: NodeFilesystemAlmostOutOfSpace
+        exp_alerts:
+          - exp_labels: *dataWarning
+            exp_annotations:
+              summary: Filesystem has less than 5% space left.
+              description: Filesystem on sda, mounted on /data, at fixture has only 2.00% available space left.
+          - exp_labels: *dataCritical
+            exp_annotations:
+              summary: Filesystem has less than 3% space left.
+              description: Filesystem on sda, mounted on /data, at fixture has only 2.00% available space left.
+      - eval_time: 59m
+        alertname: NodeFilesystemAlmostOutOfFiles
+      - eval_time: 60m
+        alertname: NodeFilesystemAlmostOutOfFiles
+        exp_alerts:
+          - exp_labels: *dataWarning
+            exp_annotations:
+              summary: Filesystem has less than 5% inodes left.
+              description: Filesystem on sda, mounted on /data, at fixture has only 2.00% available inodes left.
+          - exp_labels: *dataCritical
+            exp_annotations:
+              summary: Filesystem has less than 3% inodes left.
+              description: Filesystem on sda, mounted on /data, at fixture has only 2.00% available inodes left.
+      - eval_time: 61m
+        alertname: NodeFilesystemAlmostOutOfSpace
+      - eval_time: 61m
+        alertname: NodeFilesystemAlmostOutOfFiles
+  - name: network error ratios above one percent fire after one hour
+    interval: 1m
+    input_series:
+      - series: node_network_receive_errs_total{job="node-exporter",instance="fixture",device="eth0"}
+        values: 0+2x61 122
+      - series: node_network_receive_packets_total{job="node-exporter",instance="fixture",device="eth0"}
+        values: 0+100x62
+      - series: node_network_transmit_errs_total{job="node-exporter",instance="fixture",device="eth0"}
+        values: 0+2x61 122
+      - series: node_network_transmit_packets_total{job="node-exporter",instance="fixture",device="eth0"}
+        values: 0+100x62
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: NodeNetworkReceiveErrs
+      - eval_time: 60m
+        alertname: NodeNetworkTransmitErrs
+      - eval_time: 61m
+        alertname: NodeNetworkReceiveErrs
+        exp_alerts:
+          - exp_labels: &networkWarning
+              job: node-exporter
+              instance: fixture
+              device: eth0
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: Network interface is reporting many receive errors.
+              description: fixture interface eth0 had a receive error ratio of 2% over the last two minutes.
+      - eval_time: 61m
+        alertname: NodeNetworkTransmitErrs
+        exp_alerts:
+          - exp_labels: *networkWarning
+            exp_annotations:
+              summary: Network interface is reporting many transmit errors.
+              description: fixture interface eth0 had a transmit error ratio of 2% over the last two minutes.
+      - eval_time: 62m
+        alertname: NodeNetworkReceiveErrs
+      - eval_time: 62m
+        alertname: NodeNetworkTransmitErrs
+  - name: conntrack fires immediately above 75 percent and clears at the threshold
+    interval: 1m
+    input_series:
+      - series: node_nf_conntrack_entries{job="node-exporter",instance="fixture"}
+        values: 80 75
+      - series: node_nf_conntrack_entries_limit{job="node-exporter",instance="fixture"}
+        values: 100 100
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: NodeHighNumberConntrackEntriesUsed
+        exp_alerts:
+          - exp_labels: &hostWarning
+              job: node-exporter
+              instance: fixture
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: Number of conntrack are getting close to the limit.
+              description: fixture 80% of conntrack entries are used.
+      - eval_time: 1m
+        alertname: NodeHighNumberConntrackEntriesUsed
+  - name: clock skew fires for a growing offset in either direction and clears when it shrinks
+    interval: 1m
+    input_series:
+      - series: node_timex_offset_seconds{job="node-exporter",instance="fixture"}
+        values: 0.06+0.001x11 0.02
+      - series: node_timex_offset_seconds{job="node-exporter",instance="behind"}
+        values: -0.06-0.001x11 -0.02
+      - series: node_timex_offset_seconds{job="node-exporter",instance="correcting"}
+        values: 0.08-0.001x12
+      - series: node_timex_offset_seconds{job="unrelated",instance="other-job"}
+        values: 0.06+0.001x12
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: NodeClockSkewDetected
+      - eval_time: 11m
+        alertname: NodeClockSkewDetected
+        exp_alerts:
+          - exp_labels: *hostWarning
+            exp_annotations:
+              summary: Clock skew detected.
+              description: Clock at fixture is out of sync by more than 0.05s. Ensure NTP is configured correctly on this host.
+          - exp_labels:
+              job: node-exporter
+              instance: behind
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: Clock skew detected.
+              description: Clock at behind is out of sync by more than 0.05s. Ensure NTP is configured correctly on this host.
+      - eval_time: 12m
+        alertname: NodeClockSkewDetected
+  - name: an unsynchronised clock with high maximum error fires with a zero-valued sample
+    interval: 1m
+    input_series:
+      - series: node_timex_sync_status{job="node-exporter",instance="fixture"}
+        values: 0+0x10 1+0x5
+      - series: node_timex_maxerror_seconds{job="node-exporter",instance="fixture"}
+        values: 16+0x16
+      - series: node_timex_sync_status{job="node-exporter",instance="low-error"}
+        values: 0+0x16
+      - series: node_timex_maxerror_seconds{job="node-exporter",instance="low-error"}
+        values: 15+0x16
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: NodeClockNotSynchronising
+      - eval_time: 10m
+        alertname: NodeClockNotSynchronising
+        exp_alerts:
+          - exp_labels: *hostWarning
+            exp_annotations:
+              summary: Clock not synchronising.
+              description: Clock at fixture is not synchronising. Ensure NTP is configured on this host.
+      - eval_time: 15m
+        alertname: NodeClockNotSynchronising
+  - name: RAID alerts distinguish failed disks from sustained degradation of the array
+    interval: 1m
+    input_series:
+      - series: node_md_disks_required{job="node-exporter",instance="fixture",device="md0"}
+        values: 2+0x16
+      - series: node_md_disks{job="node-exporter",instance="fixture",device="md0",state="active"}
+        values: 1+0x15 2
+      - series: node_md_disks{job="node-exporter",instance="fixture",device="md0",state="failed"}
+        values: 1+0x15 0
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: NodeRAIDDiskFailure
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: fixture
+              owner: prometheus
+              severity: warning
+              device: md0
+              state: failed
+            exp_annotations:
+              summary: Failed device in RAID array.
+              description: At least one device in RAID array at fixture failed. Array 'md0' needs attention and possibly a disk swap.
+      - eval_time: 14m
+        alertname: NodeRAIDDegraded
+      - eval_time: 15m
+        alertname: NodeRAIDDegraded
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: fixture
+              owner: prometheus
+              severity: critical
+              device: md0
+            exp_annotations:
+              summary: RAID Array is degraded.
+              description: RAID array 'md0' at fixture is in degraded state due to one or more disks failures. Number of spare drives is insufficient to fix issue automatically.
+      - eval_time: 16m
+        alertname: NodeRAIDDegraded
+      - eval_time: 16m
+        alertname: NodeRAIDDiskFailure
+  - name: file descriptor warning and critical thresholds fire independently
+    interval: 1m
+    input_series:
+      - series: node_filefd_allocated{job="node-exporter",instance="fixture"}
+        values: 95+0x15 70
+      - series: node_filefd_maximum{job="node-exporter",instance="fixture"}
+        values: 100+0x16
+      - series: node_filefd_allocated{job="node-exporter",instance="elevated"}
+        values: 80+0x15 70
+      - series: node_filefd_maximum{job="node-exporter",instance="elevated"}
+        values: 100+0x16
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: NodeFileDescriptorLimit
+      - eval_time: 15m
+        alertname: NodeFileDescriptorLimit
+        exp_alerts:
+          - exp_labels: *hostWarning
+            exp_annotations: &fileDescriptorAnnotations
+              summary: Kernel is predicted to exhaust file descriptors limit soon.
+              description: File descriptors limit at fixture is currently at 95.00%.
+          - exp_labels:
+              job: node-exporter
+              instance: fixture
+              owner: prometheus
+              severity: critical
+            exp_annotations: *fileDescriptorAnnotations
+          - exp_labels:
+              job: node-exporter
+              instance: elevated
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: Kernel is predicted to exhaust file descriptors limit soon.
+              description: File descriptors limit at elevated is currently at 80.00%.
+      - eval_time: 16m
+        alertname: NodeFileDescriptorLimit
+  - name: CPU usage excludes idle and iowait and clears when busy time drops
+    interval: 1m
+    input_series:
+      - series: node_cpu_seconds_total{job="node-exporter",instance="fixture",cpu="0",mode="user"}
+        values: 0+57x17 969
+      - series: node_cpu_seconds_total{job="node-exporter",instance="fixture",cpu="0",mode="idle"}
+        values: 0+3x17 111
+      - series: node_cpu_seconds_total{job="node-exporter",instance="iowait",cpu="0",mode="user"}
+        values: 0+45x18
+      - series: node_cpu_seconds_total{job="node-exporter",instance="iowait",cpu="0",mode="iowait"}
+        values: 0+15x18
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: NodeCPUHighUsage
+      - eval_time: 17m
+        alertname: NodeCPUHighUsage
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: fixture
+              owner: prometheus
+              severity: info
+            exp_annotations:
+              summary: High CPU usage.
+              description: |
+                CPU usage at fixture has been above 90% for the last 15 minutes, is currently at 95.00%.
+      - eval_time: 18m
+        alertname: NodeCPUHighUsage
+  - name: load saturation uses load per core in the alert and the dashboard recording rule
+    interval: 1m
+    input_series:
+      - series: node_load1{job="node-exporter",instance="fixture"}
+        values: 6+0x15 4
+      - series: node_cpu_seconds_total{job="node-exporter",instance="fixture",cpu="0",mode="idle"}
+        values: 0+30x16
+      - series: node_cpu_seconds_total{job="node-exporter",instance="fixture",cpu="1",mode="idle"}
+        values: 0+30x16
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: NodeSystemSaturation
+      - eval_time: 15m
+        alertname: NodeSystemSaturation
+        exp_alerts:
+          - exp_labels: *hostWarning
+            exp_annotations:
+              summary: System saturated, load per core is very high.
+              description: |
+                System load per core at fixture has been above 2 for the last 15 minutes, is currently at 3.00.
+                This might indicate this instance resources saturation and can cause it becoming unresponsive.
+      - eval_time: 16m
+        alertname: NodeSystemSaturation
+    promql_expr_test:
+      - eval_time: 15m
+        expr: 'instance:node_load1_per_cpu:ratio{job="node-exporter"}'
+        exp_samples:
+          - labels: 'instance:node_load1_per_cpu:ratio{instance="fixture",job="node-exporter"}'
+            value: 3
+  - name: major page faults fire on a sustained rate and clear after counters level off
+    interval: 1m
+    input_series:
+      - series: node_vmstat_pgmajfault{job="node-exporter",instance="fixture"}
+        values: 0+36000x20 720000+0x4
+    alert_rule_test:
+      - eval_time: 19m
+        alertname: NodeMemoryMajorPagesFaults
+      - eval_time: 20m
+        alertname: NodeMemoryMajorPagesFaults
+        exp_alerts:
+          - exp_labels: *hostWarning
+            exp_annotations:
+              summary: Memory major page faults are occurring at very high rate.
+              description: |
+                Memory major pages are occurring at very high rate at fixture, 500 major page faults per second for the last 15 minutes, is currently at 600.00.
+                Please check that there is enough memory available at this instance.
+      - eval_time: 25m
+        alertname: NodeMemoryMajorPagesFaults
+  - name: low available memory fires after 15 minutes and clears at the threshold
+    interval: 1m
+    input_series:
+      - series: node_memory_MemAvailable_bytes{job="node-exporter",instance="fixture"}
+        values: 7+0x15 10
+      - series: node_memory_MemTotal_bytes{job="node-exporter",instance="fixture"}
+        values: 100+0x16
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: NodeMemoryHighUtilization
+      - eval_time: 15m
+        alertname: NodeMemoryHighUtilization
+        exp_alerts:
+          - exp_labels: *hostWarning
+            exp_annotations:
+              summary: Host is running out of memory.
+              description: |
+                Memory is filling up at fixture, has been above 90% for the last 15 minutes, is currently at 93.00%.
+      - eval_time: 16m
+        alertname: NodeMemoryHighUtilization
+  - name: a sustained disk IO queue fires for the affected device and clears after IO subsides
+    interval: 1m
+    input_series:
+      - series: node_disk_io_time_weighted_seconds_total{job="node-exporter",instance="fixture",device="sda"}
+        values: 0+720x35 25200+0x4
+    alert_rule_test:
+      - eval_time: 34m
+        alertname: NodeDiskIOSaturation
+      - eval_time: 35m
+        alertname: NodeDiskIOSaturation
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: fixture
+              owner: prometheus
+              severity: warning
+              device: sda
+            exp_annotations:
+              summary: Disk IO queue is high.
+              description: |
+                Disk IO queue (aqu-sq) is high on sda at fixture, has been above 10 for the last 30 minutes, is currently at 12.00.
+                This symptom might indicate disk saturation.
+      - eval_time: 40m
+        alertname: NodeDiskIOSaturation
+  - name: systemd reports failed services and independently detects repeated restarts
+    interval: 1m
+    input_series:
+      - series: node_systemd_unit_state{job="node-exporter",instance="fixture",name="example.service",state="failed"}
+        values: 1+0x5 0+0x16
+      - series: node_systemd_service_restart_total{job="node-exporter",instance="fixture",name="example.service"}
+        values: 0+1x18 18+0x4
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: NodeSystemdServiceFailed
+      - eval_time: 5m
+        alertname: NodeSystemdServiceFailed
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: fixture
+              owner: prometheus
+              severity: warning
+              name: example.service
+              state: failed
+            exp_annotations:
+              summary: Systemd service has entered failed state.
+              description: Systemd service example.service has entered failed state at fixture
+      - eval_time: 6m
+        alertname: NodeSystemdServiceFailed
+      - eval_time: 17m
+        alertname: NodeSystemdServiceCrashlooping
+      - eval_time: 18m
+        alertname: NodeSystemdServiceCrashlooping
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: fixture
+              owner: prometheus
+              severity: warning
+              name: example.service
+            exp_annotations:
+              summary: Systemd service keeps restaring, possibly crash looping.
+              description: Systemd service example.service has being restarted too many times at fixture for the last 15 minutes. Please check if service is crash looping.
+      - eval_time: 22m
+        alertname: NodeSystemdServiceCrashlooping
+  - name: a bonding interface fires when it loses a member and clears when the member returns
+    interval: 1m
+    input_series:
+      - series: node_bonding_slaves{job="node-exporter",instance="fixture",master="bond0"}
+        values: 2+0x6
+      - series: node_bonding_active{job="node-exporter",instance="fixture",master="bond0"}
+        values: 1+0x5 2
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: NodeBondingDegraded
+      - eval_time: 5m
+        alertname: NodeBondingDegraded
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: fixture
+              owner: prometheus
+              severity: warning
+              master: bond0
+            exp_annotations:
+              summary: Bonding interface is degraded.
+              description: Bonding interface bond0 on fixture is in degraded state due to one or more slave failures.
+      - eval_time: 6m
+        alertname: NodeBondingDegraded

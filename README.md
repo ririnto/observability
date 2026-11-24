@@ -1,7 +1,7 @@
 # Observability configuration
 
 This repository generates Prometheus rules, Grafana dashboards and alert rules, and Alertmanager configuration for the [static-builds targets](https://github.com/ririnto/static-builds/blob/main/metadata.json).
-It also generates dashboards, recording rules, and paired alerts for [Kubernetes](#monitor-kubernetes).
+It also generates dashboards, recording rules, and paired alerts for [Kubernetes](#monitor-kubernetes) and [Node Exporter](#monitor-node-exporter).
 See the [target metrics reference](docs/targets.md) for scrape paths, enablement, and source evidence.
 
 ## Generate and verify
@@ -65,6 +65,24 @@ Manage service discovery coverage separately.
 4. To evaluate alerts in Prometheus, add `rendered/kubernetes-alert-rules.yaml` to `rule_files`.
    To evaluate alerts in Grafana, provision `rendered/kubernetes-grafana-alerts.yaml` in the `Kubernetes` folder and unpause the desired rules in the file.
    Grafana alert queries use the data source UID `prometheus`.
+
+## Monitor Node Exporter
+
+1. Scrape the Node Exporter `/metrics` endpoint with the job name `node-exporter`.
+   Use a scrape interval of 30 seconds or less for the two-minute CPU and network rate queries.
+   Enable the collectors relevant to each host. For the systemd rules, set `--collector.systemd` and `--collector.systemd.enable-restarts-metrics`.
+   The RAID, bonding, conntrack, and clock alerts require the corresponding Linux metrics.
+2. Add `rendered/node-exporter-recording-rules.yaml` to Prometheus `rule_files` and use a global evaluation interval of one minute.
+   The USE Method dashboards query these recording rules.
+3. Import the files in `rendered/node-exporter-dashboards/` as Grafana Classic dashboards.
+   Select the Prometheus data source that evaluates the recording rules.
+4. To evaluate alerts in Prometheus, add `rendered/node-exporter-alert-rules.yaml` to `rule_files`.
+   To evaluate alerts in Grafana, provision `rendered/node-exporter-grafana-alerts.yaml` in the `Node Exporter` folder and unpause the desired rules in the file.
+   Grafana alert queries use the data source UID `prometheus`.
+5. For exporter reachability and textfile collector errors, use the existing static-target rules in `rendered/prometheus-rules.yaml` or `rendered/grafana-alerts.yaml`.
+   Set `--collector.textfile.directory` on exporters that collect textfiles.
+
+The upstream warning and critical variants can fire together. Use the `severity` label to route them in either evaluator.
 
 ## Choose which engine delivers alerts
 
