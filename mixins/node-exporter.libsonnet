@@ -18,7 +18,6 @@ local alertGroups = [
         },
       }
       for rule in group.rules
-      // The static-target rule already covers this signal with a reachability guard.
       if rule.alert != 'NodeTextFileCollectorScrapeError'
     ],
   }
