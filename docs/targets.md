@@ -6,7 +6,7 @@ Configure the job name shown in this table so the generated PromQL selects the i
 
 | Build target | Service and port | Metrics job and HTTP path | Metrics used |
 | --- | --- | --- | --- |
-| `apache-exporter` | HTTP 9117 by default. | `apache-exporter`, `/metrics`. | `apache_up` and `apache_accesses_total`. Prometheus attaches `job` and `instance`. |
+| `apache-exporter` | HTTP 9117 by default. | `apache-exporter`, `/metrics`. | The static-target dashboard uses `apache_up` and `apache_accesses_total`. The Apache mixin also uses `apache_info`, `apache_uptime_seconds_total`, `apache_workers`, `apache_scoreboard`, `apache_duration_ms_total`, `apache_sent_kilobytes_total`, and `apache_cpuload`. |
 | `apache-httpd` | HTTP 80 and HTTPS 443 in the image. | No native Prometheus exposition in this build. Enable `mod_status` and point `apache-exporter` at `/server-status?auto`. | Apache exporter converts Apache's status response. |
 | `coredns` | DNS TCP and UDP 53. The configured `prometheus` plugin defaults to loopback 9153. | `coredns`, `/metrics`. | `coredns_dns_requests_total`. |
 | `dnsmasq` | DNS TCP and UDP 53 and DHCP UDP 67. | No native Prometheus HTTP listener in this build. | None. Collect DNS/DHCP logs or supply an independent exporter. |
@@ -51,7 +51,7 @@ The general scrape alert covers exporter unreachability.
 
 ## Source evidence
 
-- Apache exporter listener, path, and metrics are defined in [startup](https://github.com/Lusitaniae/apache_exporter/blob/main/apache_exporter.go) and its [collector](https://github.com/Lusitaniae/apache_exporter/blob/main/collector/collector.go).
+- Apache exporter v1.1.3 defines its listener and path in [startup](https://github.com/Lusitaniae/apache_exporter/blob/v1.1.3/apache_exporter.go) and its metrics in the [collector](https://github.com/Lusitaniae/apache_exporter/blob/v1.1.3/collector/collector.go).
   The [Apache build](https://github.com/ririnto/static-builds/blob/main/apache-httpd/Dockerfile) includes [mod_status](https://httpd.apache.org/docs/2.4/mod/mod_status.html).
 - CoreDNS defines its listener and metrics in the [Prometheus plugin](https://github.com/coredns/coredns/tree/master/plugin/metrics) and [metric variables](https://github.com/coredns/coredns/blob/master/plugin/metrics/vars/vars.go).
 - HAProxy compiles [Prometheus exporter support](https://github.com/ririnto/static-builds/blob/main/haproxy/Dockerfile).

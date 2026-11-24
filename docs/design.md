@@ -76,6 +76,23 @@ The adapter substitutes zero for a missing success series when traffic exists, s
 When one job or cluster disappears while others still return results, Prometheus resolves its alert at the next successful evaluation.
 Grafana can retain that alert until it evicts the missing series, as described below.
 
+## Apache HTTP Server inputs
+
+Generation uses the [Grafana Apache HTTP mixin](https://github.com/grafana/jsonnet-libs/tree/59b6c850610f7fa8816851c981bc76b92a55cde9/apache-http-mixin) from the same pinned archive as Istio.
+The mixin uses the legacy Grafonnet library, which generation pins in the [Apache dependency lockfile](../mixins/apache-http-dependencies/jsonnetfile.lock.json).
+CI caches this vendor directory, and generation verifies the resolved lockfile.
+The repository retains the [Grafana Jsonnet libraries license](../licenses/grafana-jsonnet-libs-LICENSE), [legacy Grafonnet license](../licenses/grafonnet-lib-LICENSE), and [license for the rfmoz dashboard source](../licenses/rfmoz-grafana-dashboards-LICENSE) credited by the mixin.
+
+The dashboard adapter omits obsolete fields and uses Classic data source references for the query variables.
+It positions the upstream rows so their panels fit without overlaps.
+
+The adapter scopes the three new alerts to `apache-exporter` and retains the upstream pending periods, severities, and thresholds.
+The existing `ApacheStatusScrapeFailed` pair covers the mixin's `ApacheDown` condition.
+The worker alert keeps job and cluster labels and requires a positive scoreboard total.
+The response-time alert requires a positive request increase before dividing.
+The upstream Loki option stays disabled because the static exporter lacks the log-derived HTTP status histograms.
+The mixin has no recording rules.
+
 ## Alert evaluation
 
 Grafana evaluates the Prometheus alert expression as an instant query and triggers for each returned sample, including a zero-valued sample.

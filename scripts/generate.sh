@@ -51,9 +51,11 @@ go build -o "$directory/jb" github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb
 install_dependencies "$upstream/kubernetes-mixin" "$dependencies/shared" "${JSONNET_VENDOR_CACHE:-}"
 install_dependencies mixins/istio-dependencies "$dependencies/istio" "${ISTIO_JSONNET_VENDOR_CACHE:-}"
 install_dependencies mixins/nginx-vts-dependencies "$dependencies/nginx-vts" "${NGINX_VTS_JSONNET_VENDOR_CACHE:-}"
+install_dependencies mixins/apache-http-dependencies "$dependencies/apache-http" "${APACHE_HTTP_JSONNET_VENDOR_CACHE:-}"
 
 go tool jsonnet -J "$upstream" -J "$upstream/grafana-jsonnet-libs" \
 	-J "$dependencies/istio/vendor" -J "$dependencies/shared/vendor" \
+	-J "$dependencies/apache-http/vendor" \
 	-S -c -m "$OUTPUT_DIR" mixins/main.jsonnet
 go tool jsonnet -J "$upstream" -J "$dependencies/nginx-vts/vendor" \
 	-S -c -m "$OUTPUT_DIR" mixins/nginx-vts.libsonnet

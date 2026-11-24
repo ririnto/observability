@@ -1,0 +1,115 @@
+apiVersion: 1
+groups:
+  - folder: Apache HTTP Server
+    interval: 1m
+    name: apache-http
+    orgId: 1
+    rules:
+      - annotations:
+          description: Apache has just been restarted on {{ $labels.instance }}.
+          summary: Apache restart.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: apache_uptime_seconds_total{job="apache-exporter"} / 60 < 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 0s
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: ApacheRestart
+          severity: info
+        noDataState: OK
+        title: ApacheRestart
+        uid: obs-37a97176d43256ccb1a814171f617331
+      - annotations:
+          description: |
+            Apache workers in busy state approach the max workers count 80% workers busy on {{ $labels.instance }}.
+            The current value is {{ $values.A.Value }}%.
+          summary: Apache workers load is too high.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (sum by (job, instance, cluster) (apache_workers{job="apache-exporter", state="busy"}) / (sum by (job, instance, cluster) (apache_scoreboard{job="apache-exporter"}) > 0) ) * 100 > 80
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: ApacheWorkersLoad
+          severity: warning
+        noDataState: OK
+        title: ApacheWorkersLoad
+        uid: obs-7b5e0fc40ae545499a98c970bd86df40
+      - annotations:
+          description: |
+            Apache average response time is above the threshold of 5000 ms on {{ $labels.instance }}.
+            The current value is {{ $values.A.Value }} ms.
+          summary: Apache response time is too high.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                increase(apache_duration_ms_total{job="apache-exporter"}[5m])/(increase(apache_accesses_total{job="apache-exporter"}[5m]) > 0) > 5000
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: ApacheResponseTimeTooHigh
+          severity: warning
+        noDataState: OK
+        title: ApacheResponseTimeTooHigh
+        uid: obs-e85b935e866bd5ca7da86b79cf654b0f

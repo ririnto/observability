@@ -1,7 +1,7 @@
 # Observability configuration
 
 This repository generates Prometheus rules, Grafana dashboards and alert rules, and Alertmanager configuration for the [static-builds targets](https://github.com/ririnto/static-builds/blob/main/metadata.json).
-It also generates dashboards and paired alerts for [Kubernetes](#monitor-kubernetes), [Node Exporter](#monitor-node-exporter), [Istio](#monitor-istio), and [NGINX VTS](#monitor-nginx-vts).
+It also generates dashboards and paired alerts for [Kubernetes](#monitor-kubernetes), [Node Exporter](#monitor-node-exporter), [Istio](#monitor-istio), [NGINX VTS](#monitor-nginx-vts), and [Apache HTTP Server](#monitor-apache-http-server).
 The Kubernetes and Node Exporter mixins also generate recording rules.
 See the [target metrics reference](docs/targets.md) for scrape paths, enablement, and source evidence.
 
@@ -128,6 +128,30 @@ The warning fires below 95% success and the critical alert fires below 85%, each
 Both severities can fire together.
 The rules stay quiet when traffic is idle or missing.
 Track failed scrapes separately with the [static-target alerts](#load-the-configuration).
+
+## Monitor Apache HTTP Server
+
+1. Configure Apache's `mod_status` handler at `/server-status` with `ExtendedStatus On`.
+   Restrict access to the exporter and point its `--scrape_uri` at `/server-status?auto`.
+2. Scrape the exporter's `/metrics` endpoint on port 9117 as the `apache-exporter` job.
+   Use a scrape interval of 15 seconds or less and a one-minute Prometheus evaluation interval.
+   Attach a `cluster` label to distinguish identical instance labels from different clusters in the worker alert.
+3. Import `rendered/apache-http-dashboards/apache-http.json` as a Grafana Classic dashboard.
+   Select the Prometheus data source, the `apache-exporter` job, and an instance.
+4. For Prometheus evaluation, add `rendered/apache-http-alert-rules.yaml` to `rule_files`.
+   For Grafana evaluation, provision `rendered/apache-http-grafana-alerts.yaml` in the `Apache HTTP Server` folder.
+   Use a Prometheus data source with UID `prometheus` and unpause the desired rules.
+5. Route `ApacheRestart` as info and `ApacheWorkersLoad` and `ApacheResponseTimeTooHigh` as warnings.
+   Match `alertname` and `owner="prometheus"` in Alertmanager or `prometheus_alertname` and `owner="grafana"` in Grafana.
+   Configure a receiver or contact point for the chosen evaluator.
+   The [static-target rules](#load-the-configuration) still cover exporter reachability and the `apache_up` signal.
+
+The restart alert fires on the first evaluation that sees uptime below one minute, including at initial startup.
+Scrape or evaluation gaps can hide that brief signal.
+Grafana uses query presence to fire even when uptime is zero and can retain a vanished series until eviction.
+The worker alert fires after 15 minutes above 80% of scoreboard slots.
+The response-time alert fires after 15 minutes with a five-minute average above 5000 ms.
+It needs requests in the five-minute window.
 
 ## Choose which engine delivers alerts
 
