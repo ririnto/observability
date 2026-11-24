@@ -1,0 +1,104 @@
+rule_files:
+  - ../../rendered/apache-http-alert-rules.yaml
+evaluation_interval: 1m
+tests:
+  - name: restart fires immediately below one minute only for Apache exporter
+    interval: 1m
+    input_series:
+      - series: apache_uptime_seconds_total{job="apache-exporter",instance="apache:9117"}
+        values: 300 0 60
+      - series: apache_uptime_seconds_total{job="other",instance="apache:9117"}
+        values: 300 0 0
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: ApacheRestart
+      - eval_time: 1m
+        alertname: ApacheRestart
+        exp_alerts:
+          - exp_labels:
+              job: apache-exporter
+              instance: apache:9117
+              owner: prometheus
+              severity: info
+            exp_annotations:
+              summary: Apache restart.
+              description: Apache has just been restarted on apache:9117.
+      - eval_time: 2m
+        alertname: ApacheRestart
+  - name: worker load waits for sustained saturation and resolves at the threshold
+    interval: 1m
+    input_series:
+      - series: apache_workers{job="apache-exporter",instance="apache:9117",cluster="west",state="busy"}
+        values: 90x15 80
+      - series: apache_scoreboard{job="apache-exporter",instance="apache:9117",cluster="west",state="reply"}
+        values: 90x15 80
+      - series: apache_scoreboard{job="apache-exporter",instance="apache:9117",cluster="west",state="open_slot"}
+        values: 10x15 20
+      - series: apache_workers{job="apache-exporter",instance="apache:9117",cluster="east",state="busy"}
+        values: 50x16
+      - series: apache_scoreboard{job="apache-exporter",instance="apache:9117",cluster="east",state="idle"}
+        values: 100x16
+      - series: apache_workers{job="other",instance="apache:9117",cluster="east",state="busy"}
+        values: 100x16
+      - series: apache_scoreboard{job="other",instance="apache:9117",cluster="east",state="reply"}
+        values: 100x16
+      - series: apache_workers{job="apache-exporter",instance="invalid-scoreboard:9117",state="busy"}
+        values: 1x16
+      - series: apache_scoreboard{job="apache-exporter",instance="invalid-scoreboard:9117",state="open_slot"}
+        values: 0x16
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: ApacheWorkersLoad
+      - eval_time: 15m
+        alertname: ApacheWorkersLoad
+        exp_alerts:
+          - exp_labels:
+              job: apache-exporter
+              instance: apache:9117
+              cluster: west
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: Apache workers load is too high.
+              description: |
+                Apache workers in busy state approach the max workers count 80% workers busy on apache:9117.
+                The current value is 90%.
+      - eval_time: 16m
+        alertname: ApacheWorkersLoad
+  - name: response time waits for sustained slow requests and resolves after recovery
+    interval: 1m
+    input_series:
+      - series: apache_duration_ms_total{job="apache-exporter",instance="apache:9117"}
+        values: 0+6000x16 96000x8
+      - series: apache_accesses_total{job="apache-exporter",instance="apache:9117"}
+        values: 0+1x25
+      - series: apache_duration_ms_total{job="apache-exporter",instance="at-threshold:9117"}
+        values: 0+5000x25
+      - series: apache_accesses_total{job="apache-exporter",instance="at-threshold:9117"}
+        values: 0+1x25
+      - series: apache_duration_ms_total{job="apache-exporter",instance="idle:9117"}
+        values: 0+6000x25
+      - series: apache_accesses_total{job="apache-exporter",instance="idle:9117"}
+        values: 1x25
+      - series: apache_duration_ms_total{job="other",instance="apache:9117"}
+        values: 0+6000x25
+      - series: apache_accesses_total{job="other",instance="apache:9117"}
+        values: 0+1x25
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ApacheResponseTimeTooHigh
+      - eval_time: 16m
+        alertname: ApacheResponseTimeTooHigh
+        exp_alerts:
+          - exp_labels:
+              job: apache-exporter
+              instance: apache:9117
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: Apache response time is too high.
+              description: |
+                Apache average response time is above the threshold of 5000 ms on apache:9117.
+                The current value is 6000 ms.
+      - eval_time: 21m
+        alertname: ApacheResponseTimeTooHigh
