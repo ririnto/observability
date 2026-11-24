@@ -84,9 +84,10 @@ CI caches this vendor directory, and generation verifies the resolved lockfile.
 The repository retains the [Grafana Jsonnet libraries license](../licenses/grafana-jsonnet-libs-LICENSE), [legacy Grafonnet license](../licenses/grafonnet-lib-LICENSE), and [license for the rfmoz dashboard source](../licenses/rfmoz-grafana-dashboards-LICENSE) credited by the mixin.
 
 The dashboard adapter omits obsolete fields and uses Classic data source references for the query variables.
-It positions the upstream rows so their panels fit without overlaps.
+It orders rows by their upstream vertical positions and uses each row's tallest panel to place the next row.
 
 The adapter scopes the three new alerts to `apache-exporter` and retains the upstream pending periods, severities, and thresholds.
+Generation checks each upstream expression against the version paired with its scoped expression and fails if they differ.
 The existing `ApacheStatusScrapeFailed` pair covers the mixin's `ApacheDown` condition.
 The worker alert keeps job and cluster labels and requires a positive scoreboard total.
 The response-time alert requires a positive request increase before dividing.
