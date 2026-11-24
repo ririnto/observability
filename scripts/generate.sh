@@ -43,6 +43,11 @@ tar -xzf "$directory/kubernetes-mixin.tar.gz" -C "$upstream/kubernetes-mixin" --
 tar -xzf "$directory/node-exporter.tar.gz" -C "$upstream/node-exporter" --strip-components=1
 tar -xzf "$directory/grafana-jsonnet-libs.tar.gz" -C "$upstream/grafana-jsonnet-libs" --strip-components=1
 tar -xzf "$directory/dnation-kubernetes-monitoring.tar.gz" -C "$upstream/dnation-kubernetes-monitoring" --strip-components=1
+curl --fail --silent --show-error --location \
+	--output "$directory/coredns-mixin.tar.gz" \
+	https://codeload.github.com/povilasv/coredns-mixin/tar.gz/eb356cfbdcb901fa1a3c3d008faa2a5773a917a1
+mkdir -p "$upstream/coredns-mixin"
+tar -xzf "$directory/coredns-mixin.tar.gz" -C "$upstream/coredns-mixin" --strip-components=1
 if ! cmp "$upstream/kubernetes-mixin/jsonnetfile.json" "$upstream/node-exporter/docs/node-mixin/jsonnetfile.json"; then
 	printf '%s\n' 'Node Exporter mixin dependencies differ from the locked Kubernetes mixin manifest.' >&2
 	exit 1
@@ -51,11 +56,11 @@ go build -o "$directory/jb" github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb
 install_dependencies "$upstream/kubernetes-mixin" "$dependencies/shared" "${JSONNET_VENDOR_CACHE:-}"
 install_dependencies mixins/istio-dependencies "$dependencies/istio" "${ISTIO_JSONNET_VENDOR_CACHE:-}"
 install_dependencies mixins/nginx-vts-dependencies "$dependencies/nginx-vts" "${NGINX_VTS_JSONNET_VENDOR_CACHE:-}"
-install_dependencies mixins/apache-http-dependencies "$dependencies/apache-http" "${APACHE_HTTP_JSONNET_VENDOR_CACHE:-}"
+install_dependencies mixins/legacy-grafonnet-dependencies "$dependencies/legacy-grafonnet" "${LEGACY_GRAFONNET_VENDOR_CACHE:-}"
 
 go tool jsonnet -J "$upstream" -J "$upstream/grafana-jsonnet-libs" \
 	-J "$dependencies/istio/vendor" -J "$dependencies/shared/vendor" \
-	-J "$dependencies/apache-http/vendor" \
+	-J "$dependencies/legacy-grafonnet/vendor" \
 	-S -c -m "$OUTPUT_DIR" mixins/main.jsonnet
 go tool jsonnet -J "$upstream" -J "$dependencies/nginx-vts/vendor" \
 	-S -c -m "$OUTPUT_DIR" mixins/nginx-vts.libsonnet

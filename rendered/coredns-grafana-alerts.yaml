@@ -1,0 +1,300 @@
+apiVersion: 1
+groups:
+  - folder: CoreDNS
+    interval: 1m
+    name: coredns
+    orgId: 1
+    rules:
+      - annotations:
+          description: CoreDNS 99th percentile latency is {{ $values.A.Value | humanizeDuration }} for server {{ $labels.server }} in zone "{{ $labels.zone }}".
+          summary: CoreDNS is experiencing high 99th percentile latency.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                histogram_quantile(0.99, sum(rate(coredns_dns_request_duration_seconds_bucket{job="coredns"}[5m])) without (instance,pod)) > 4
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: CoreDNSLatencyHigh
+          severity: critical
+        noDataState: OK
+        title: CoreDNSLatencyHigh
+        uid: obs-96a6bb0c279c79eba2f95ad476235fa0
+      - annotations:
+          description: CoreDNS is returning SERVFAIL for {{ $values.A.Value | humanizePercentage }} of requests.
+          summary: CoreDNS is returning SERVFAIL.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum without (pod, instance, server, zone, view, rcode, plugin) (rate(coredns_dns_responses_total{job="coredns",rcode="SERVFAIL"}[5m]))
+                  /
+                sum without (pod, instance, server, zone, view, rcode, plugin) (rate(coredns_dns_responses_total{job="coredns"}[5m])) > 0.03
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: CoreDNSErrorsHigh
+          severity: critical
+        noDataState: OK
+        title: CoreDNSErrorsHigh (severity=critical)
+        uid: obs-c5b956a9a71b239720403ba977d95c32
+      - annotations:
+          description: CoreDNS is returning SERVFAIL for {{ $values.A.Value | humanizePercentage }} of requests.
+          summary: CoreDNS is returning SERVFAIL.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum without (pod, instance, server, zone, view, rcode, plugin) (rate(coredns_dns_responses_total{job="coredns",rcode="SERVFAIL"}[5m]))
+                  /
+                sum without (pod, instance, server, zone, view, rcode, plugin) (rate(coredns_dns_responses_total{job="coredns"}[5m])) > 0.01
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: CoreDNSErrorsHigh
+          severity: warning
+        noDataState: OK
+        title: CoreDNSErrorsHigh (severity=warning)
+        uid: obs-4efde8bbcbf1121ef682f1b40194a845
+  - folder: CoreDNS
+    interval: 1m
+    name: coredns_forward
+    orgId: 1
+    rules:
+      - annotations:
+          description: CoreDNS has 99th percentile latency of {{ $values.A.Value | humanizeDuration }} forwarding requests to {{ $labels.to }}.
+          summary: CoreDNS is experiencing high latency forwarding requests.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                histogram_quantile(0.99, sum(rate(coredns_proxy_request_duration_seconds_bucket{proxy_name="forward",job="coredns"}[5m])) without (pod, instance, rcode)) > 4
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: CoreDNSForwardLatencyHigh
+          severity: critical
+        noDataState: OK
+        title: CoreDNSForwardLatencyHigh
+        uid: obs-aef249c180695c813a44173c63815a12
+      - annotations:
+          description: CoreDNS is returning SERVFAIL for {{ $values.A.Value | humanizePercentage }} of forward requests to {{ $labels.to }}.
+          summary: CoreDNS is returning SERVFAIL for forward requests.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum without (pod, instance, rcode) (rate(coredns_proxy_request_duration_seconds_count{proxy_name="forward",job="coredns",rcode="SERVFAIL"}[5m]))
+                  /
+                sum without (pod, instance, rcode) (rate(coredns_proxy_request_duration_seconds_count{proxy_name="forward",job="coredns"}[5m])) > 0.03
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: CoreDNSForwardErrorsHigh
+          severity: critical
+        noDataState: OK
+        title: CoreDNSForwardErrorsHigh (severity=critical)
+        uid: obs-ff9395cd5e464bee623d0e2704fec9f4
+      - annotations:
+          description: CoreDNS is returning SERVFAIL for {{ $values.A.Value | humanizePercentage }} of forward requests to {{ $labels.to }}.
+          summary: CoreDNS is returning SERVFAIL for forward requests.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum without (pod, instance, rcode) (rate(coredns_proxy_request_duration_seconds_count{proxy_name="forward",job="coredns",rcode="SERVFAIL"}[5m]))
+                  /
+                sum without (pod, instance, rcode) (rate(coredns_proxy_request_duration_seconds_count{proxy_name="forward",job="coredns"}[5m])) > 0.01
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: CoreDNSForwardErrorsHigh
+          severity: warning
+        noDataState: OK
+        title: CoreDNSForwardErrorsHigh (severity=warning)
+        uid: obs-47f92e64f76add3ad3174e2e3eaa23d5
+      - annotations:
+          description: CoreDNS health checks have failed to upstream server {{ $labels.to }}.
+          summary: CoreDNS health checks have failed to upstream server.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum without (pod, instance) (rate(coredns_proxy_healthcheck_failures_total{proxy_name="forward",job="coredns"}[5m])) > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: CoreDNSForwardHealthcheckFailureCount
+          severity: warning
+        noDataState: OK
+        title: CoreDNSForwardHealthcheckFailureCount
+        uid: obs-00d24b2b6f82bef832743fb9ff8041f6
+      - annotations:
+          description: CoreDNS received requests while all forwarding upstreams were unhealthy.
+          summary: CoreDNS health checks have failed for all upstream servers.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum without (pod, instance) (rate(coredns_forward_healthcheck_broken_total{job="coredns"}[5m])) > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: CoreDNSForwardHealthcheckBrokenCount
+          severity: warning
+        noDataState: OK
+        title: CoreDNSForwardHealthcheckBrokenCount
+        uid: obs-50a6ae9b1151e2e6ecf8be07d48484ed

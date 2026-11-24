@@ -36,12 +36,12 @@ jobs:
           key: nginx-vts-jsonnet-${{ runner.os }}-${{ hashFiles('mixins/nginx-vts-dependencies/jsonnetfile*.json', 'go.mod', 'go.sum') }}
       - uses: actions/cache@v5
         with:
-          path: ${{ runner.temp }}/observability-apache-http-jsonnet-vendor
-          key: apache-http-jsonnet-${{ runner.os }}-${{ hashFiles('mixins/apache-http-dependencies/jsonnetfile*.json', 'go.mod', 'go.sum') }}
+          path: ${{ runner.temp }}/observability-legacy-grafonnet-vendor
+          key: legacy-grafonnet-${{ runner.os }}-${{ hashFiles('mixins/legacy-grafonnet-dependencies/jsonnetfile*.json', 'go.mod', 'go.sum') }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
         env:
           JSONNET_VENDOR_CACHE: ${{ runner.temp }}/observability-jsonnet-vendor
           ISTIO_JSONNET_VENDOR_CACHE: ${{ runner.temp }}/observability-istio-jsonnet-vendor
           NGINX_VTS_JSONNET_VENDOR_CACHE: ${{ runner.temp }}/observability-nginx-vts-jsonnet-vendor
-          APACHE_HTTP_JSONNET_VENDOR_CACHE: ${{ runner.temp }}/observability-apache-http-jsonnet-vendor
+          LEGACY_GRAFONNET_VENDOR_CACHE: ${{ runner.temp }}/observability-legacy-grafonnet-vendor

@@ -1,7 +1,7 @@
 # Observability configuration
 
 This repository generates Prometheus rules, Grafana dashboards and alert rules, and Alertmanager configuration for the [static-builds targets](https://github.com/ririnto/static-builds/blob/main/metadata.json).
-It also generates dashboards and paired alerts for [Kubernetes](#monitor-kubernetes), [Node Exporter](#monitor-node-exporter), [Istio](#monitor-istio), [NGINX VTS](#monitor-nginx-vts), and [Apache HTTP Server](#monitor-apache-http-server).
+It also generates dashboards and paired alerts for [Kubernetes](#monitor-kubernetes), [Node Exporter](#monitor-node-exporter), [Istio](#monitor-istio), [NGINX VTS](#monitor-nginx-vts), [Apache HTTP Server](#monitor-apache-http-server), and [CoreDNS](#monitor-coredns).
 The Kubernetes and Node Exporter mixins also generate recording rules.
 See the [target metrics reference](docs/targets.md) for scrape paths, enablement, and source evidence.
 
@@ -152,6 +152,25 @@ Grafana uses query presence to fire even when uptime is zero and can retain a va
 The worker alert fires after 15 minutes above 80% of scoreboard slots.
 The response-time alert fires after 15 minutes with a five-minute average above 5000 ms.
 It needs requests in the five-minute window.
+
+## Monitor CoreDNS
+
+1. Enable the `prometheus` plugin in the Corefile and bind it to an address reachable by Prometheus.
+2. Scrape `/metrics` as the `coredns` job at least once a minute.
+   Keep the Prometheus `instance` label for dashboard filtering.
+3. Import `rendered/coredns-dashboards/coredns.json` as a Grafana Classic dashboard.
+   Select the Prometheus data source and an instance.
+4. For Prometheus evaluation, add `rendered/coredns-alert-rules.yaml` to `rule_files`.
+   For Grafana evaluation, provision `rendered/coredns-grafana-alerts.yaml` in the `CoreDNS` folder.
+   Use a Prometheus data source with UID `prometheus` and unpause the desired rules.
+5. Route the warning and critical alerts through the [chosen evaluator](#choose-which-engine-delivers-alerts).
+   Keep the [static-target rules](#load-the-configuration) for failed scrapes.
+
+The latency alerts fire after the 99th percentile exceeds four seconds for ten minutes.
+The SERVFAIL alerts fire after the response ratio exceeds 1% for ten minutes.
+The critical variant also fires after the ratio exceeds 3% for ten minutes.
+The forwarding alerts and panels need the `forward` plugin.
+The cache panels need the `cache` plugin.
 
 ## Choose which engine delivers alerts
 

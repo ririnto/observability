@@ -8,7 +8,7 @@ Configure the job name shown in this table so the generated PromQL selects the i
 | --- | --- | --- | --- |
 | `apache-exporter` | HTTP 9117 by default. | `apache-exporter`, `/metrics`. | The static-target dashboard uses `apache_up` and `apache_accesses_total`. The Apache mixin also uses `apache_info`, `apache_uptime_seconds_total`, `apache_workers`, `apache_scoreboard`, `apache_duration_ms_total`, `apache_sent_kilobytes_total`, and `apache_cpuload`. |
 | `apache-httpd` | HTTP 80 and HTTPS 443 in the image. | No native Prometheus exposition in this build. Enable `mod_status` and point `apache-exporter` at `/server-status?auto`. | Apache exporter converts Apache's status response. |
-| `coredns` | DNS TCP and UDP 53. The configured `prometheus` plugin defaults to loopback 9153. | `coredns`, `/metrics`. | `coredns_dns_requests_total`. |
+| `coredns` | DNS TCP and UDP 53. The configured `prometheus` plugin defaults to loopback 9153. | `coredns`, `/metrics`. | The static-target dashboard uses `coredns_dns_requests_total`. The CoreDNS mixin also uses the [metrics below](#coredns-metrics). |
 | `dnsmasq` | DNS TCP and UDP 53 and DHCP UDP 67. | No native Prometheus HTTP listener in this build. | None. Collect DNS/DHCP logs or supply an independent exporter. |
 | `haproxy` | The image declares HTTP 80 and HTTPS 443. The exporter binds on a frontend you configure. | `haproxy`, `/metrics` when the frontend selects `prometheus-exporter` on that path. | `haproxy_frontend_http_responses_total` and `haproxy_backend_status{state="DOWN"}`. The `proxy` label identifies the frontend or backend. |
 | `monit` | Optional Monit HTTP interface. The image declares 2812. | No native Prometheus exposition in this build. | Monit status and events are separate from Prometheus. |
@@ -21,7 +21,7 @@ VTS accepts an explicit format suffix or the format set on the display location.
 The health-check example sets the location format to Prometheus.
 Choose a private listener for metrics that contain backend or virtual-host labels.
 
-## CoreDNS request metric labels
+## CoreDNS metrics
 
 The `coredns_dns_requests_total` metric has these labels.
 
@@ -31,6 +31,19 @@ The `coredns_dns_requests_total` metric has these labels.
 - `proto`
 - `family`
 - `type`
+
+The CoreDNS dashboard filters on the Prometheus `instance` label.
+It lists instances from `coredns_build_info` and uses `up` to count successful scrapes.
+
+| Signal | Metric families in CoreDNS 1.15.0 |
+| --- | --- |
+| DNS traffic | `coredns_dns_requests_total` and `coredns_dns_responses_total`. The response counter has `rcode` and `plugin` labels. |
+| DNS latency and message sizes | `coredns_dns_request_duration_seconds`, `coredns_dns_request_size_bytes`, and `coredns_dns_response_size_bytes`. The queries use the classic histogram buckets. |
+| Forwarded responses and latency | `coredns_proxy_request_duration_seconds` with `proxy_name="forward"`. The queries use the histogram's count and buckets with the `to` and `rcode` labels. |
+| Forwarding health | `coredns_proxy_healthcheck_failures_total` with `proxy_name="forward"` and `to`. The `coredns_forward_healthcheck_broken_total` counter tracks queries for which all forwarding upstreams are unhealthy. |
+| Cache | `coredns_cache_hits_total`, `coredns_cache_requests_total`, and `coredns_cache_entries`. Hits and entries break down by cache `type`. |
+| Diagnostics | `coredns_panics_total` and `coredns_plugin_enabled`. The plugin gauge has a `name` label. |
+| Process and Go runtime | `process_resident_memory_bytes`, `process_cpu_seconds_total`, and `go_goroutines` from the Prometheus client registry. |
 
 ## NGINX probe results
 
@@ -53,7 +66,8 @@ The general scrape alert covers exporter unreachability.
 
 - Apache exporter v1.1.3 defines its listener and path in [startup](https://github.com/Lusitaniae/apache_exporter/blob/v1.1.3/apache_exporter.go) and its metrics in the [collector](https://github.com/Lusitaniae/apache_exporter/blob/v1.1.3/collector/collector.go).
   The [Apache build](https://github.com/ririnto/static-builds/blob/main/apache-httpd/Dockerfile) includes [mod_status](https://httpd.apache.org/docs/2.4/mod/mod_status.html).
-- CoreDNS defines its listener and metrics in the [Prometheus plugin](https://github.com/coredns/coredns/tree/master/plugin/metrics) and [metric variables](https://github.com/coredns/coredns/blob/master/plugin/metrics/vars/vars.go).
+- CoreDNS 1.15.0 defines its listener, default registry, and build gauge in the [Prometheus plugin](https://github.com/coredns/coredns/blob/v1.15.0/plugin/metrics/metrics.go) and DNS metrics in the [metric variables](https://github.com/coredns/coredns/blob/v1.15.0/plugin/metrics/vars/vars.go).
+  See the [proxy metrics](https://github.com/coredns/coredns/blob/v1.15.0/plugin/pkg/proxy/metrics.go), [forward metrics](https://github.com/coredns/coredns/blob/v1.15.0/plugin/forward/metrics.go), [cache metrics](https://github.com/coredns/coredns/blob/v1.15.0/plugin/cache/metrics.go), and [default registry collectors](https://github.com/prometheus/client_golang/blob/v1.24.1/prometheus/registry.go).
 - HAProxy compiles [Prometheus exporter support](https://github.com/ririnto/static-builds/blob/main/haproxy/Dockerfile).
   The exporter listener is selected by [HAProxy configuration](https://docs.haproxy.org/3.4/configuration.html#prometheus-exporter) and metric behavior is in the [addon source](https://github.com/haproxy/haproxy/tree/master/addons/promex).
 - The [DNSMasq build](https://github.com/ririnto/static-builds/blob/main/dnsmasq/Dockerfile) and [upstream manual](https://thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html) describe DNS, DHCP, and logging.
