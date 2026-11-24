@@ -52,7 +52,8 @@ Jsonnet Bundler uses the [Istio dependency lockfile](../mixins/istio-dependencie
 CI caches that vendor directory separately and generation verifies the resolved lockfile.
 The repository retains the [Grafana Jsonnet libraries license](../licenses/grafana-jsonnet-libs-LICENSE), [Grafonnet license](../licenses/grafonnet-LICENSE), and [xtd license](../licenses/xtd-LICENSE).
 
-The dashboard adapter gives zero-width Grafonnet row headers the full 24-column width required for Classic dashboard validation.
+The Classic dashboard schema requires a nonzero width.
+The adapter sets zero-width Grafonnet row headers to 24 columns so they span the dashboard.
 The adapter applies the upstream `integrations/istio` job selector and evaluates the seven upstream alerts once per minute.
 The HTTP error expression counts 4xx and 5xx responses, and the gRPC expression counts nonzero numeric status codes.
 `IstioListenerConfigConflictsCritical` adds the current inbound and outbound conflict gauges by pod and cluster.
