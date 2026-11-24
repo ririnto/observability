@@ -15,6 +15,7 @@ tool (
 
 require (
 	cuelang.org/go v0.17.1
+	github.com/prometheus/prometheus v0.316.0
 	go.yaml.in/yaml/v3 v3.0.5
 )
 
@@ -348,7 +349,6 @@ require (
 	github.com/prometheus/exporter-toolkit v0.20.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
-	github.com/prometheus/prometheus v0.316.0 // indirect
 	github.com/prometheus/sigv4 v0.5.0 // indirect
 	github.com/protocolbuffers/txtpbfmt v0.0.0-20260420112717-c39628bde8b5 // indirect
 	github.com/puzpuzpuz/xsync/v4 v4.5.0 // indirect

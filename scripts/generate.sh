@@ -23,5 +23,5 @@ if ! cmp "$upstream/kubernetes-mixin/jsonnetfile.lock.json" "$dependencies/jsonn
 fi
 
 go tool jsonnet -J "$upstream" -J "$dependencies/vendor" -S -c -m "$OUTPUT_DIR" mixins/main.jsonnet
-go run ./cmd/formatyaml "$OUTPUT_DIR"/*.yaml
+CGO_ENABLED=0 go run ./cmd/formatyaml -strip-promql-comments "$OUTPUT_DIR"/*.yaml
 pnpm exec oxfmt --config oxfmt.config.ts --write "$OUTPUT_DIR"
