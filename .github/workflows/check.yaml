@@ -30,8 +30,13 @@ jobs:
         with:
           path: ${{ runner.temp }}/observability-istio-jsonnet-vendor
           key: istio-jsonnet-${{ runner.os }}-${{ hashFiles('mixins/istio-dependencies/jsonnetfile*.json', 'go.mod', 'go.sum') }}
+      - uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/observability-nginx-vts-jsonnet-vendor
+          key: nginx-vts-jsonnet-${{ runner.os }}-${{ hashFiles('mixins/nginx-vts-dependencies/jsonnetfile*.json', 'go.mod', 'go.sum') }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
         env:
           JSONNET_VENDOR_CACHE: ${{ runner.temp }}/observability-jsonnet-vendor
           ISTIO_JSONNET_VENDOR_CACHE: ${{ runner.temp }}/observability-istio-jsonnet-vendor
+          NGINX_VTS_JSONNET_VENDOR_CACHE: ${{ runner.temp }}/observability-nginx-vts-jsonnet-vendor
