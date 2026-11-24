@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "check": "run-p check:*",
+    "check:alert-parity": "go tool task check:alert-parity",
     "check:alertmanager": "go tool task check:alertmanager",
     "check:dashboard": "go tool task check:dashboard",
     "check:generated": "go tool task check:generated",
@@ -15,9 +16,9 @@
     "check:typescript": "tsc --noEmit",
     "check:ultracite": "ultracite check",
     "fix": "run-p fix:*",
-    "fix:jsonnetfmt": "go tool jsonnetfmt -i mixins/main.jsonnet mixins/targets.libsonnet mixins/dashboard.libsonnet mixins/alerts.libsonnet",
+    "fix:jsonnetfmt": "go tool jsonnetfmt -i mixins/*.jsonnet mixins/*.libsonnet",
     "fix:markdownlint-cli2": "markdownlint-cli2 --fix",
-    "fix:shfmt": "go tool shfmt -w tests",
+    "fix:shfmt": "go tool shfmt -w scripts tests",
     "fix:ultracite": "ultracite fix",
     "generate": "go tool task generate"
   },

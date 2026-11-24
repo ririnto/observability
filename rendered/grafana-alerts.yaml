@@ -2,6 +2,147 @@ apiVersion: 1
 groups:
   - folder: Static targets
     interval: 1m
+    name: static-targets
+    orgId: 1
+    rules:
+      - annotations:
+          description: Check the target process, listener, scrape path, and network reachability.
+          summary: Prometheus cannot scrape {{ $labels.job }} at {{ $labels.instance }}.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: up{job=~"apache-exporter|coredns|haproxy|nginx|nginx-health-traffic|nginx-upstream-healthcheck|node-exporter|vector"} == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: StaticTargetScrapeFailed
+          severity: warning
+        noDataState: OK
+        title: StaticTargetScrapeFailed
+        uid: obs-088f6c8cacab63d35da08d6ff03f79c9
+      - annotations:
+          description: Check the configured scrape URI, mod_status access rules, and the Apache service.
+          summary: The Apache exporter cannot read Apache status at {{ $labels.instance }}.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: apache_up{job="apache-exporter"} == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: ApacheStatusScrapeFailed
+          severity: warning
+        noDataState: OK
+        title: ApacheStatusScrapeFailed
+        uid: obs-71bafa410778245f7474aec835576971
+      - annotations:
+          description: Check server health and connectivity in the affected backend.
+          summary: HAProxy backend {{ $labels.proxy }} is down at {{ $labels.instance }}.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: haproxy_backend_status{job="haproxy",state="DOWN"} == 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: HAProxyBackendDown
+          severity: warning
+        noDataState: OK
+        title: HAProxyBackendDown
+        uid: obs-63ee29383946d11bcd71983b75963823
+      - annotations:
+          description: Check the configured textfile directories, permissions, and Prometheus format of the metric files.
+          summary: Node Exporter could not read textfile metrics at {{ $labels.instance }}.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: (node_textfile_scrape_error{job="node-exporter"} == 1) and on (job, instance) (up{job="node-exporter"} == 1)
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeTextFileCollectorScrapeError
+          severity: warning
+        noDataState: OK
+        title: NodeTextFileCollectorScrapeError
+        uid: obs-56c2bc652a3f646de4d98c9b9ce5908d
+  - folder: Static targets
+    interval: 1m
     name: Vector pipeline
     orgId: 1
     rules:
@@ -34,6 +175,7 @@ groups:
         isPaused: true
         labels:
           owner: grafana
+          prometheus_alertname: VectorComponentErrors
           severity: warning
         noDataState: OK
         title: Vector component errors
