@@ -1,0 +1,72 @@
+rule_files:
+  - ../../rendered/nginx-vts-alert-rules.yaml
+evaluation_interval: 1m
+tests:
+  - name: both severities distinguish jobs and clusters, wait five minutes, and recover
+    interval: 1m
+    input_series:
+      - series: nginx_vts_server_requests_total{job="nginx",cluster="west",host="site",code="2xx"}
+        values: 0+90x13
+      - series: nginx_vts_server_requests_total{job="nginx",cluster="west",host="site",code="4xx"}
+        values: 0+10x8 80x4
+      - series: nginx_vts_server_requests_total{job="nginx",cluster="east",host="site",code="5xx"}
+        values: 0+10x8 80x4
+      - series: nginx_vts_server_requests_total{job="nginx-health-traffic",cluster="east",host="site",code="3xx"}
+        values: 0+1000x13
+      - series: nginx_vts_server_requests_total{job="nginx",cluster="east",host="*",code="2xx"}
+        values: 0+1000x13
+      - series: nginx_vts_server_requests_total{job="nginx",cluster="west",host="site",code="total"}
+        values: 0+1000x13
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: NginxVTSSuccessRateLow
+      - eval_time: 6m
+        alertname: NginxVTSSuccessRateLow
+        exp_alerts:
+          - exp_labels:
+              <<: &nginxLabels
+                job: nginx
+                owner: prometheus
+              cluster: east
+              severity: critical
+            exp_annotations: &eastAnnotations
+              description: The NGINX VTS request success rate for nginx is 0%. Check 4xx and 5xx responses.
+              summary: &summary NGINX VTS request success rate is low.
+          - exp_labels:
+              <<: *nginxLabels
+              cluster: east
+              severity: warning
+            exp_annotations: *eastAnnotations
+          - exp_labels:
+              <<: *nginxLabels
+              cluster: west
+              severity: warning
+            exp_annotations:
+              description: The NGINX VTS request success rate for nginx is 90%. Check 4xx and 5xx responses.
+              summary: *summary
+      - eval_time: 13m
+        alertname: NginxVTSSuccessRateLow
+  - name: both thresholds are strict and idle targets stay quiet
+    interval: 1m
+    input_series:
+      - series: nginx_vts_server_requests_total{job="at-warning",host="site",code="2xx"}
+        values: 0+57x15
+      - series: nginx_vts_server_requests_total{job="at-warning",host="site",code="5xx"}
+        values: 0+3x15
+      - series: nginx_vts_server_requests_total{job="at-critical",host="site",code="2xx"}
+        values: 0+510x15
+      - series: nginx_vts_server_requests_total{job="at-critical",host="site",code="5xx"}
+        values: 0+90x15
+      - series: nginx_vts_server_requests_total{job="idle-nginx",host="site",code="5xx"}
+        values: 0x15
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: NginxVTSSuccessRateLow
+        exp_alerts:
+          - exp_labels:
+              job: at-critical
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              description: The NGINX VTS request success rate for at-critical is 85%. Check 4xx and 5xx responses.
+              summary: *summary

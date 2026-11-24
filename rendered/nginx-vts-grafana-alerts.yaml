@@ -1,0 +1,75 @@
+apiVersion: 1
+groups:
+  - folder: NGINX VTS
+    interval: 1m
+    name: nginx-vts
+    orgId: 1
+    rules:
+      - annotations:
+          description: The NGINX VTS request success rate for {{ $labels.job }} is {{ printf "%.4g" $values.A.Value }}%. Check 4xx and 5xx responses.
+          summary: NGINX VTS request success rate is low.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: 100 * ((sum by (job, cluster) (rate(nginx_vts_server_requests_total{job=~".+", host!="*", code=~"[1-3]xx"}[5m])) or (0 * sum by (job, cluster) (rate(nginx_vts_server_requests_total{job=~".+", host!="*", code=~"[1-5]xx"}[5m])))) / (sum by (job, cluster) (rate(nginx_vts_server_requests_total{job=~".+", host!="*", code=~"[1-5]xx"}[5m])) > 0)) < 85
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NginxVTSSuccessRateLow
+          severity: critical
+        noDataState: OK
+        title: NginxVTSSuccessRateLow (severity=critical)
+        uid: obs-b81681837bc04982f677a81fd1b830a4
+      - annotations:
+          description: The NGINX VTS request success rate for {{ $labels.job }} is {{ printf "%.4g" $values.A.Value }}%. Check 4xx and 5xx responses.
+          summary: NGINX VTS request success rate is low.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: 100 * ((sum by (job, cluster) (rate(nginx_vts_server_requests_total{job=~".+", host!="*", code=~"[1-3]xx"}[5m])) or (0 * sum by (job, cluster) (rate(nginx_vts_server_requests_total{job=~".+", host!="*", code=~"[1-5]xx"}[5m])))) / (sum by (job, cluster) (rate(nginx_vts_server_requests_total{job=~".+", host!="*", code=~"[1-5]xx"}[5m])) > 0)) < 95
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NginxVTSSuccessRateLow
+          severity: warning
+        noDataState: OK
+        title: NginxVTSSuccessRateLow (severity=warning)
+        uid: obs-db20cce097363ad06b53c06f005fdaee

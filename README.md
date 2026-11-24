@@ -1,7 +1,7 @@
 # Observability configuration
 
 This repository generates Prometheus rules, Grafana dashboards and alert rules, and Alertmanager configuration for the [static-builds targets](https://github.com/ririnto/static-builds/blob/main/metadata.json).
-It also generates dashboards and paired alerts for [Kubernetes](#monitor-kubernetes), [Node Exporter](#monitor-node-exporter), and [Istio](#monitor-istio).
+It also generates dashboards and paired alerts for [Kubernetes](#monitor-kubernetes), [Node Exporter](#monitor-node-exporter), [Istio](#monitor-istio), and [NGINX VTS](#monitor-nginx-vts).
 The Kubernetes and Node Exporter mixins also generate recording rules.
 See the [target metrics reference](docs/targets.md) for scrape paths, enablement, and source evidence.
 
@@ -106,6 +106,28 @@ The upstream warning and critical variants can fire together. Use the `severity`
 The dashboards and alerts query scraped metrics directly.
 `IstioMetricsDown` fires for configured Istio targets with a failed scrape.
 Track the coverage of service discovery separately.
+
+## Monitor NGINX VTS
+
+1. Enable the [NGINX VTS module](https://github.com/vozlt/nginx-module-vts) and scrape its Prometheus display endpoint at least once a minute.
+   Use `/status/format/prometheus` when the display location is `/status`.
+   The rule reads `nginx_vts_server_requests_total` with the native `host` and `code` labels.
+   Attach a `cluster` label to the VTS scrape targets for the dashboards and to distinguish clusters in alerts.
+2. Import the files in `rendered/nginx-vts-dashboards/` as Grafana Classic dashboards.
+   Select the Prometheus data source that scrapes VTS and select a cluster.
+   On the VTS panels, select named hosts or the `*` aggregate to count each request once.
+   For **Nginx VTS Enhanced**, attach `namespace` and `pod` labels to VTS targets and load `rendered/kubernetes-recording-rules.yaml` for the CPU panel.
+   Its resource panels also require kubelet cAdvisor and kube-state-metrics data.
+3. For Prometheus evaluation, add `rendered/nginx-vts-alert-rules.yaml` to `rule_files`.
+   For Grafana evaluation, provision `rendered/nginx-vts-grafana-alerts.yaml` in the `NGINX VTS` folder, use a Prometheus data source with UID `prometheus`, and unpause the desired rules.
+4. Route `NginxVTSSuccessRateLow` by `severity` and evaluator ownership.
+   Match `alertname` in Prometheus Alertmanager and `prometheus_alertname` in Grafana.
+   Configure an Alertmanager receiver or Grafana contact point for the chosen evaluator.
+
+The warning fires below 95% success and the critical alert fires below 85%, each after five minutes.
+Both severities can fire together.
+The rules stay quiet when traffic is idle or missing.
+Track failed scrapes separately with the [static-target alerts](#load-the-configuration).
 
 ## Choose which engine delivers alerts
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 go run ./cmd/dashboardcheck rendered/static-targets.json
-go run ./cmd/dashboardcheck -classic rendered/{kubernetes,node-exporter,istio}-dashboards/*.json
+go run ./cmd/dashboardcheck -classic rendered/{kubernetes,node-exporter,istio,nginx-vts}-dashboards/*.json
 if result="$(go run ./cmd/dashboardcheck tests/fixtures/invalid-dashboard.json 2>&1)"; then
 	printf '%s\n' 'Invalid Grafana fixture passed.' >&2
 	exit 1

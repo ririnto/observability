@@ -60,6 +60,22 @@ The HTTP error expression counts 4xx and 5xx responses, and the gRPC expression 
 It requires both gauges and stays active while their sum is above zero.
 Promtool tests cover firing, pending, and recovery for each alert.
 
+## NGINX VTS inputs
+
+Generation pins the [dNation Kubernetes Monitoring source](https://github.com/dNationCloud/kubernetes-monitoring/tree/b00ebd69a48421f985e340bda77617319ba7b776/jsonnet) by commit.
+It renders the two dashboards for `nginx_vts_*` metrics using their own [Jsonnet dependency lockfile](../mixins/nginx-vts-dependencies/jsonnetfile.lock.json) and CI vendor cache.
+The separate render keeps each mixin on its locked Jsonnet dependency versions.
+The enhanced dashboard renders the upstream metrics panels with Loki disabled.
+The repository retains the [dNation license](../licenses/dnation-kubernetes-monitoring-LICENSE), [dNation notice](../licenses/dnation-kubernetes-monitoring-NOTICE), [Grafonnet license](../licenses/grafonnet-LICENSE), [Docsonnet license](../licenses/docsonnet-LICENSE), and [xtd license](../licenses/xtd-LICENSE).
+
+The adapter uses the upstream warning and critical thresholds, five-minute pending period, and grouping by job and cluster.
+It calculates the five-minute success percentage from response classes `1xx` through `3xx` divided by all five response classes.
+It excludes the duplicate `host="*"` aggregate and requires a positive request rate.
+The upstream fallback for zero success can mask all-error traffic.
+The adapter substitutes zero for a missing success series when traffic exists, so both evaluators can fire at 0% success.
+When one job or cluster disappears while others still return results, Prometheus resolves its alert at the next successful evaluation.
+Grafana can retain that alert until it evicts the missing series, as described below.
+
 ## Alert evaluation
 
 Grafana evaluates the Prometheus alert expression as an instant query and triggers for each returned sample, including a zero-valued sample.
