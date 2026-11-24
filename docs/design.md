@@ -44,10 +44,27 @@ The existing `NodeTextFileCollectorScrapeError` pair covers the upstream textfil
 The network error annotations report percentages because the upstream queries return ratios.
 Promtool tests exercise both severity variants where present, pending and recovery behavior, and a recording rule used by the USE Method dashboards.
 
+## Istio inputs
+
+Generation pins the [Grafana Istio mixin](https://github.com/grafana/jsonnet-libs/tree/59b6c850610f7fa8816851c981bc76b92a55cde9/istio-2-mixin) by commit.
+The same archive supplies its Common and Logs Jsonnet libraries.
+Jsonnet Bundler uses the [Istio dependency lockfile](../mixins/istio-dependencies/jsonnetfile.lock.json) for the Grafonnet versions required by those libraries and the mixin.
+CI caches that vendor directory separately and generation verifies the resolved lockfile.
+The repository retains the [Grafana Jsonnet libraries license](../licenses/grafana-jsonnet-libs-LICENSE), [Grafonnet license](../licenses/grafonnet-LICENSE), and [xtd license](../licenses/xtd-LICENSE).
+
+The Classic dashboard schema requires a nonzero width.
+The adapter sets zero-width Grafonnet row headers to 24 columns so they span the dashboard.
+The adapter applies the upstream `integrations/istio` job selector and evaluates the seven upstream alerts once per minute.
+The HTTP error expression counts 4xx and 5xx responses, and the gRPC expression counts nonzero numeric status codes.
+`IstioListenerConfigConflictsCritical` adds the current inbound and outbound conflict gauges by pod and cluster.
+It requires both gauges and stays active while their sum is above zero.
+Promtool tests cover firing, pending, and recovery for each alert.
+
 ## Alert evaluation
 
 Grafana evaluates the Prometheus alert expression as an instant query and triggers for each returned sample, including a zero-valued sample.
 For example, `NodeClockNotSynchronising` returns zero when the clock is unsynchronised.
+`IstioMetricsDown` likewise returns zero for a failed scrape.
 The Vector rule keeps its existing Grafana query and `> 0` Math condition.
 Prometheus applies the same comparison in PromQL.
 The Grafana adapter rewrites the Prometheus annotation variable `$value` to `$values.A.Value`.

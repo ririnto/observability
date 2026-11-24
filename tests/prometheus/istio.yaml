@@ -1,0 +1,156 @@
+rule_files:
+  - ../../rendered/istio-alert-rules.yaml
+evaluation_interval: 1m
+tests:
+  - name: high latency and HTTP and gRPC error rates fire after five minutes and clear
+    interval: 1m
+    input_series:
+      - series: istio_request_duration_milliseconds_sum{job="integrations/istio",cluster="test",reporter="source",source_canonical_service="client",destination_canonical_service="backend"}
+        values: 0+50000x8 401000+1000x4
+      - series: istio_request_duration_milliseconds_count{job="integrations/istio",cluster="test",reporter="source",source_canonical_service="client",destination_canonical_service="backend"}
+        values: 0+10x13
+      - series: istio_requests_total{job="integrations/istio",cluster="test",reporter="source",source_canonical_service="client",destination_canonical_service="backend",request_protocol="http",response_code="400"}
+        values: 0+10x8 80x4
+      - series: istio_requests_total{job="integrations/istio",cluster="test",reporter="source",source_canonical_service="client",destination_canonical_service="backend",request_protocol="http",response_code="200"}
+        values: 0+90x13
+      - series: istio_requests_total{job="integrations/istio",cluster="test",reporter="source",source_canonical_service="client",destination_canonical_service="backend",request_protocol="grpc",grpc_response_status="14"}
+        values: 0+20x8 160x4
+      - series: istio_requests_total{job="integrations/istio",cluster="test",reporter="source",source_canonical_service="client",destination_canonical_service="backend",request_protocol="grpc",grpc_response_status="0"}
+        values: 0+80x13
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: IstioHighRequestLatencyWarning
+      - eval_time: 5m
+        alertname: IstioHighHTTPRequestErrorsCritical
+      - eval_time: 5m
+        alertname: IstioHighGRPCRequestErrorsCritical
+      - eval_time: 6m
+        alertname: IstioHighRequestLatencyWarning
+        exp_alerts:
+          - exp_labels:
+              <<: &traffic
+                job: integrations/istio
+                cluster: test
+                source_canonical_service: client
+                destination_canonical_service: backend
+                owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: High request latency between pods can indicate that there are performance issues within the k8s environment.
+              description: |
+                Requests from Istio service client to service backend on cluster test has an average latency of 5000ms, which is above the threshold of 4000.
+      - eval_time: 6m
+        alertname: IstioHighHTTPRequestErrorsCritical
+        exp_alerts:
+          - exp_labels: &trafficCritical
+              <<: *traffic
+              severity: critical
+            exp_annotations:
+              summary: There are a high number of HTTP request errors in the Istio system.
+              description: |
+                HTTP requests from Istio service client to service backend on cluster test have an error rate above 10%, which is above the threshold of 5%.
+      - eval_time: 6m
+        alertname: IstioHighGRPCRequestErrorsCritical
+        exp_alerts:
+          - exp_labels: *trafficCritical
+            exp_annotations:
+              summary: There are a high number of GRPC request errors in the Istio system.
+              description: |
+                GRPC requests from Istio service client to service backend on cluster test have an error rate above 20%, which is above the threshold of 5%.
+      - eval_time: 13m
+        alertname: IstioHighRequestLatencyWarning
+      - eval_time: 13m
+        alertname: IstioHighHTTPRequestErrorsCritical
+      - eval_time: 13m
+        alertname: IstioHighGRPCRequestErrorsCritical
+  - name: Istiod validation failures and xDS rejections fire on counter growth and clear
+    interval: 1m
+    input_series:
+      - series: galley_validation_failed{job="integrations/istio",cluster="test",pod="istiod-1"}
+        values: 0+2x4 8x4
+      - series: pilot_total_xds_rejects{job="integrations/istio",cluster="test",pod="istiod-1"}
+        values: 0+4x4 16x4
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: IstioGalleyValidationFailuresWarning
+      - eval_time: 1m
+        alertname: IstioXDSConfigRejectionsWarning
+      - eval_time: 2m
+        alertname: IstioGalleyValidationFailuresWarning
+        exp_alerts:
+          - exp_labels: &istiodWarning
+              <<: &istiod
+                job: integrations/istio
+                cluster: test
+                pod: istiod-1
+                owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: Istio Galley is reporting failures for a number of configurations.
+              description: |
+                istiod-1 on cluster test has had 4 Galley validation failures, which is above the thresold of 0.
+      - eval_time: 2m
+        alertname: IstioXDSConfigRejectionsWarning
+        exp_alerts:
+          - exp_labels: *istiodWarning
+            exp_annotations:
+              summary: Istio Pilot is seeing a number of xDS rejections from envoy proxies.
+              description: |
+                istiod-1 on cluster test has had 8 xDS rejections from envoy proxies, which is above the threshold of 0.
+      - eval_time: 9m
+        alertname: IstioGalleyValidationFailuresWarning
+      - eval_time: 9m
+        alertname: IstioXDSConfigRejectionsWarning
+  - name: listener conflict gauges stay active during persistent conflicts and clear when both gauges report zero
+    interval: 1m
+    input_series:
+      - series: pilot_conflict_inbound_listener{job="integrations/istio",cluster="test",pod="istiod-1"}
+        values: 3x6 0
+      - series: pilot_conflict_outbound_listener_tcp_over_current_tcp{job="integrations/istio",cluster="test",pod="istiod-1"}
+        values: 2x6 0
+      - series: pilot_conflict_inbound_listener{job="integrations/istio",cluster="other",pod="istiod-1"}
+        values: 10x7
+      - series: pilot_conflict_inbound_listener{job="integrations/istio",cluster="test",pod="envoy-1"}
+        values: 9x7
+      - series: pilot_conflict_outbound_listener_tcp_over_current_tcp{job="integrations/istio",cluster="test",pod="envoy-1"}
+        values: 9x7
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: IstioListenerConfigConflictsCritical
+      - eval_time: 1m
+        alertname: IstioListenerConfigConflictsCritical
+        exp_alerts: &listenerConflict
+          - exp_labels:
+              <<: *istiod
+              severity: critical
+            exp_annotations:
+              summary: Istio Pilot is seeing a number of inbound and or outbound listener conflicts by envoy proxies.
+              description: |
+                istiod-1 on cluster test reports 5 inbound and or outbound listener conflict entries in the current push, which is above the threshold of 0.
+      - eval_time: 6m
+        alertname: IstioListenerConfigConflictsCritical
+        exp_alerts: *listenerConflict
+      - eval_time: 7m
+        alertname: IstioListenerConfigConflictsCritical
+  - name: a zero-valued Istio scrape fires after five minutes and clears after a successful scrape
+    interval: 1m
+    input_series:
+      - series: up{job="integrations/istio",cluster="test",pod="istiod-1",instance="istiod-1:15014"}
+        values: 0x5 1
+      - series: up{job="other",cluster="test",pod="other-1",instance="other-1:8080"}
+        values: 0x6
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: IstioMetricsDown
+      - eval_time: 5m
+        alertname: IstioMetricsDown
+        exp_alerts:
+          - exp_labels:
+              <<: *istiod
+              instance: istiod-1:15014
+              severity: critical
+            exp_annotations:
+              summary: Istio metrics are down.
+              description: There are no available metrics for Istio integration from pod istiod-1 in cluster test.
+      - eval_time: 6m
+        alertname: IstioMetricsDown

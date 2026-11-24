@@ -1,7 +1,8 @@
 # Observability configuration
 
 This repository generates Prometheus rules, Grafana dashboards and alert rules, and Alertmanager configuration for the [static-builds targets](https://github.com/ririnto/static-builds/blob/main/metadata.json).
-It also generates dashboards, recording rules, and paired alerts for [Kubernetes](#monitor-kubernetes) and [Node Exporter](#monitor-node-exporter).
+It also generates dashboards and paired alerts for [Kubernetes](#monitor-kubernetes), [Node Exporter](#monitor-node-exporter), and [Istio](#monitor-istio).
+The Kubernetes and Node Exporter mixins also generate recording rules.
 See the [target metrics reference](docs/targets.md) for scrape paths, enablement, and source evidence.
 
 ## Generate and verify
@@ -83,6 +84,28 @@ Manage service discovery coverage separately.
    Set `--collector.textfile.directory` on exporters that collect textfiles.
 
 The upstream warning and critical variants can fire together. Use the `severity` label to route them in either evaluator.
+
+## Monitor Istio
+
+1. Scrape Istiod and the Envoy proxies, including gateways, at least once a minute.
+   Use `/metrics` on Istiod's monitoring port and `/stats/prometheus` on the proxy telemetry endpoint.
+   For endpoint setup, see [Istio's Prometheus integration guide](https://istio.io/latest/docs/ops/integrations/prometheus/).
+2. Set the resulting scrape label `job="integrations/istio"` for both sets of targets.
+   Attach `cluster` and `pod` to the scraped series.
+   Control-plane alerts use pod names that start with `istiod`.
+   Request alerts use source-reported Istio metrics and canonical service labels.
+3. Import the files in `rendered/istio-dashboards/` as Grafana Classic dashboards.
+   Select the Prometheus data source that scrapes Istio.
+   For the optional **Istio logs** dashboard, select a Loki data source with Envoy access logs labeled for the [upstream Istio mixin](https://github.com/grafana/jsonnet-libs/tree/59b6c850610f7fa8816851c981bc76b92a55cde9/istio-2-mixin#istio-logs).
+4. To evaluate the alerts in Prometheus, add `rendered/istio-alert-rules.yaml` to `rule_files`.
+   To evaluate them in Grafana, provision `rendered/istio-grafana-alerts.yaml` in the `Istio` folder, set up a Prometheus data source with UID `prometheus`, and unpause the desired rules.
+5. Route Istio notifications by `severity` and the alert name.
+   In Prometheus Alertmanager, match `alertname` and `owner="prometheus"` and configure a real receiver.
+   In Grafana, match `prometheus_alertname` and `owner="grafana"` and configure a contact point.
+
+The dashboards and alerts query scraped metrics directly.
+`IstioMetricsDown` fires for configured Istio targets with a failed scrape.
+Track the coverage of service discovery separately.
 
 ## Choose which engine delivers alerts
 

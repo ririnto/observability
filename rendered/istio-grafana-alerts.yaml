@@ -1,0 +1,264 @@
+apiVersion: 1
+groups:
+  - folder: Istio
+    interval: 1m
+    name: istio-alerts
+    orgId: 1
+    rules:
+      - annotations:
+          description: |
+            Requests from Istio service {{$labels.source_canonical_service}} to service {{$labels.destination_canonical_service}} on cluster {{$labels.cluster}} has an average latency of {{ printf "%.0f" $values.A.Value }}ms, which is above the threshold of 4000.
+          summary: High request latency between pods can indicate that there are performance issues within the k8s environment.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum by (job, cluster, source_canonical_service, destination_canonical_service) (increase(istio_request_duration_milliseconds_sum{reporter="source", job="integrations/istio"}[5m]))
+                /
+                clamp_min(sum by (job, cluster, source_canonical_service, destination_canonical_service) (increase(istio_request_duration_milliseconds_count{reporter="source", job="integrations/istio"}[5m])), 1) > 4000
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: IstioHighRequestLatencyWarning
+          severity: warning
+        noDataState: OK
+        title: IstioHighRequestLatencyWarning
+        uid: obs-f546e915ea3971bd7cfdf24d4dcaf3fe
+      - annotations:
+          description: |
+            {{$labels.pod}} on cluster {{$labels.cluster}} has had {{ printf "%.0f" $values.A.Value }} Galley validation failures, which is above the thresold of 0.
+          summary: Istio Galley is reporting failures for a number of configurations.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum by (job, cluster, pod) (increase(galley_validation_failed{pod=~"istiod.*", job="integrations/istio"}[5m])) > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: IstioGalleyValidationFailuresWarning
+          severity: warning
+        noDataState: OK
+        title: IstioGalleyValidationFailuresWarning
+        uid: obs-dc17df0e27635b7eece50a71a0241077
+      - annotations:
+          description: |
+            {{$labels.pod}} on cluster {{$labels.cluster}} reports {{ printf "%.0f" $values.A.Value }} inbound and or outbound listener conflict entries in the current push, which is above the threshold of 0.
+          summary: Istio Pilot is seeing a number of inbound and or outbound listener conflicts by envoy proxies.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum by (job, cluster, pod) (pilot_conflict_inbound_listener{pod=~"istiod.*", job="integrations/istio"}) + sum by (job, cluster, pod) (pilot_conflict_outbound_listener_tcp_over_current_tcp{pod=~"istiod.*", job="integrations/istio"}) > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: IstioListenerConfigConflictsCritical
+          severity: critical
+        noDataState: OK
+        title: IstioListenerConfigConflictsCritical
+        uid: obs-ceb4c17c47cedf4682d01f1fe98b5fed
+      - annotations:
+          description: |
+            {{$labels.pod}} on cluster {{$labels.cluster}} has had {{ printf "%.0f" $values.A.Value }} xDS rejections from envoy proxies, which is above the threshold of 0.
+          summary: Istio Pilot is seeing a number of xDS rejections from envoy proxies.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum by (job, cluster, pod) (increase(pilot_total_xds_rejects{pod=~"istiod.*", job="integrations/istio"}[5m])) > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: IstioXDSConfigRejectionsWarning
+          severity: warning
+        noDataState: OK
+        title: IstioXDSConfigRejectionsWarning
+        uid: obs-555838ea10ac9258f336e08311d88c83
+      - annotations:
+          description: |
+            HTTP requests from Istio service {{$labels.source_canonical_service}} to service {{$labels.destination_canonical_service}} on cluster {{$labels.cluster}} have an error rate above {{ printf "%.0f" $values.A.Value }}%, which is above the threshold of 5%.
+          summary: There are a high number of HTTP request errors in the Istio system.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                100 * sum by (job, cluster, source_canonical_service, destination_canonical_service) (increase(istio_requests_total{reporter="source", request_protocol="http", response_code=~"[45].+", job="integrations/istio"}[5m]))
+                /
+                clamp_min(sum by (job, cluster, source_canonical_service, destination_canonical_service) (increase(istio_requests_total{reporter="source", request_protocol="http", job="integrations/istio"}[5m])), 1) > 5
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: IstioHighHTTPRequestErrorsCritical
+          severity: critical
+        noDataState: OK
+        title: IstioHighHTTPRequestErrorsCritical
+        uid: obs-fa4a40f6fe4f3467493495e9fae34bb3
+      - annotations:
+          description: |
+            GRPC requests from Istio service {{$labels.source_canonical_service}} to service {{$labels.destination_canonical_service}} on cluster {{$labels.cluster}} have an error rate above {{ printf "%.0f" $values.A.Value }}%, which is above the threshold of 5%.
+          summary: There are a high number of GRPC request errors in the Istio system.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                100 * sum by (job, cluster, source_canonical_service, destination_canonical_service) (increase(istio_requests_total{reporter="source", grpc_response_status=~"[1-9]\\d*", job="integrations/istio"}[5m]))
+                /
+                clamp_min(sum by (job, cluster, source_canonical_service, destination_canonical_service) (increase(istio_requests_total{reporter="source", grpc_response_status=~"[0-9]\\d*", job="integrations/istio"}[5m])), 1) > 5
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: IstioHighGRPCRequestErrorsCritical
+          severity: critical
+        noDataState: OK
+        title: IstioHighGRPCRequestErrorsCritical
+        uid: obs-ee911ff3f86e1b7da34e8649bbc7de1c
+      - annotations:
+          description: There are no available metrics for Istio integration from pod {{$labels.pod}} in cluster {{$labels.cluster}}.
+          summary: Istio metrics are down.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                up{job="integrations/istio"} == 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: IstioMetricsDown
+          severity: critical
+        noDataState: OK
+        title: IstioMetricsDown
+        uid: obs-191416891eac2a063a791d8d91cc19f6
