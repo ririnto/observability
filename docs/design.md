@@ -79,8 +79,8 @@ Grafana can retain that alert until it evicts the missing series, as described b
 ## Apache HTTP Server inputs
 
 Generation uses the [Grafana Apache HTTP mixin](https://github.com/grafana/jsonnet-libs/tree/59b6c850610f7fa8816851c981bc76b92a55cde9/apache-http-mixin) from the same pinned archive as Istio.
-The mixin uses the legacy Grafonnet library, which generation pins in the [Apache dependency lockfile](../mixins/apache-http-dependencies/jsonnetfile.lock.json).
-CI caches this vendor directory, and generation verifies the resolved lockfile.
+The Apache HTTP and CoreDNS mixins share the [legacy Grafonnet dependency lockfile](../mixins/legacy-grafonnet-dependencies/jsonnetfile.lock.json).
+CI caches the shared vendor directory, and generation verifies the resolved lockfile.
 The repository retains the [Grafana Jsonnet libraries license](../licenses/grafana-jsonnet-libs-LICENSE), [legacy Grafonnet license](../licenses/grafonnet-lib-LICENSE), and [license for the rfmoz dashboard source](../licenses/rfmoz-grafana-dashboards-LICENSE) credited by the mixin.
 
 The dashboard adapter omits obsolete fields and uses Classic data source references for the query variables.
@@ -93,6 +93,20 @@ The worker alert keeps job and cluster labels and requires a positive scoreboard
 The response-time alert requires a positive request increase before dividing.
 The upstream Loki option stays disabled because the static exporter lacks the log-derived HTTP status histograms.
 The mixin has no recording rules.
+
+## CoreDNS inputs
+
+Generation pins the [CoreDNS mixin](https://github.com/povilasv/coredns-mixin/tree/eb356cfbdcb901fa1a3c3d008faa2a5773a917a1) by commit and retains its [license](../licenses/coredns-mixin-LICENSE).
+The adapter sets the `coredns` job and uses `instance` in the dashboard.
+It preserves the upstream layout in Classic stat and time-series panels and derives cache misses from requests and hits.
+The forwarding panels and alerts select the `forward` proxy metrics from [CoreDNS 1.15.0](targets.md#coredns-metrics).
+
+The generated alerts retain the upstream thresholds, severities, and pending periods.
+The warning and critical SERVFAIL variants can both fire above 3%.
+The static-target rules cover failed scrapes for configured targets.
+The upstream `CoreDNSDown` omission leaves service discovery coverage to the operator.
+The adapter drops upstream runbook URLs because the pinned mixin contains no runbook.
+The mixin supplies no recording rules.
 
 ## Alert evaluation
 

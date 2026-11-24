@@ -1,0 +1,167 @@
+rule_files:
+  - ../../rendered/coredns-alert-rules.yaml
+evaluation_interval: 1m
+tests:
+  - name: sustained DNS latency fires for the affected zone and view
+    interval: 1m
+    input_series:
+      - series: coredns_dns_request_duration_seconds_bucket{job="coredns",instance="dns:9153",server="dns://:53",zone="example.org.",view="internal",le="4.096"}
+        values: 0x15
+      - series: coredns_dns_request_duration_seconds_bucket{job="coredns",instance="dns:9153",server="dns://:53",zone="example.org.",view="internal",le="8.192"}
+        values: 0+100x15
+      - series: coredns_dns_request_duration_seconds_bucket{job="coredns",instance="dns:9153",server="dns://:53",zone="example.org.",view="internal",le="+Inf"}
+        values: 0+100x15
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: CoreDNSLatencyHigh
+      - eval_time: 11m
+        alertname: CoreDNSLatencyHigh
+        exp_alerts:
+          - exp_labels:
+              job: coredns
+              server: "dns://:53"
+              zone: example.org.
+              view: internal
+              owner: prometheus
+              severity: critical
+            exp_annotations:
+              summary: CoreDNS is experiencing high 99th percentile latency.
+              description: CoreDNS 99th percentile latency is 8.151s for server dns://:53 in zone "example.org.".
+  - name: DNS SERVFAIL alerts use job-scoped responses and preserve both severities
+    interval: 1m
+    input_series:
+      - series: coredns_dns_responses_total{job="coredns",instance="dns:9153",cluster="west",server="dns://:53",zone=".",view="",rcode="SERVFAIL",plugin="forward"}
+        values: 0+4x15 60x8
+      - series: coredns_dns_responses_total{job="coredns",instance="dns:9153",cluster="west",server="dns://:53",zone=".",view="",rcode="NOERROR",plugin="cache"}
+        values: 0+96x24
+      - series: coredns_dns_responses_total{job="coredns",instance="dns:9153",cluster="east",server="dns://:53",zone=".",view="",rcode="SERVFAIL",plugin="forward"}
+        values: 0+2x15 30x8
+      - series: coredns_dns_responses_total{job="coredns",instance="dns:9153",cluster="east",server="dns://:53",zone=".",view="",rcode="NOERROR",plugin="cache"}
+        values: 0+98x24
+      - series: coredns_dns_responses_total{job="other",instance="dns:9153",cluster="west",rcode="SERVFAIL"}
+        values: 0+100x24
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: CoreDNSErrorsHigh
+      - eval_time: 11m
+        alertname: CoreDNSErrorsHigh
+        exp_alerts:
+          - exp_labels:
+              job: coredns
+              cluster: west
+              owner: prometheus
+              severity: critical
+            exp_annotations:
+              summary: CoreDNS is returning SERVFAIL.
+              description: CoreDNS is returning SERVFAIL for 4% of requests.
+          - exp_labels:
+              job: coredns
+              cluster: west
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: CoreDNS is returning SERVFAIL.
+              description: CoreDNS is returning SERVFAIL for 4% of requests.
+          - exp_labels:
+              job: coredns
+              cluster: east
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: CoreDNS is returning SERVFAIL.
+              description: CoreDNS is returning SERVFAIL for 2% of requests.
+      - eval_time: 20m
+        alertname: CoreDNSErrorsHigh
+  - name: forwarding alerts select the forward proxy and retain the upstream
+    interval: 1m
+    input_series:
+      - series: coredns_proxy_request_duration_seconds_bucket{job="coredns",instance="dns:9153",proxy_name="forward",to="192.0.2.53:53",rcode="NOERROR",le="4.096"}
+        values: 0x15
+      - series: coredns_proxy_request_duration_seconds_bucket{job="coredns",instance="dns:9153",proxy_name="forward",to="192.0.2.53:53",rcode="NOERROR",le="8.192"}
+        values: 0+96x15
+      - series: coredns_proxy_request_duration_seconds_bucket{job="coredns",instance="dns:9153",proxy_name="forward",to="192.0.2.53:53",rcode="NOERROR",le="+Inf"}
+        values: 0+96x15
+      - series: coredns_proxy_request_duration_seconds_bucket{job="coredns",instance="dns:9153",proxy_name="grpc",to="192.0.2.54:53",rcode="NOERROR",le="4.096"}
+        values: 0x15
+      - series: coredns_proxy_request_duration_seconds_bucket{job="coredns",instance="dns:9153",proxy_name="grpc",to="192.0.2.54:53",rcode="NOERROR",le="8.192"}
+        values: 0+96x15
+      - series: coredns_proxy_request_duration_seconds_bucket{job="coredns",instance="dns:9153",proxy_name="grpc",to="192.0.2.54:53",rcode="NOERROR",le="+Inf"}
+        values: 0+96x15
+      - series: coredns_proxy_request_duration_seconds_count{job="coredns",instance="dns:9153",proxy_name="forward",to="192.0.2.53:53",rcode="NOERROR"}
+        values: 0+96x15
+      - series: coredns_proxy_request_duration_seconds_count{job="coredns",instance="dns:9153",proxy_name="forward",to="192.0.2.53:53",rcode="SERVFAIL"}
+        values: 0+4x15
+      - series: coredns_proxy_request_duration_seconds_count{job="coredns",instance="dns:9153",proxy_name="grpc",to="192.0.2.54:53",rcode="SERVFAIL"}
+        values: 0+100x15
+      - series: coredns_proxy_healthcheck_failures_total{job="coredns",instance="dns:9153",proxy_name="forward",to="192.0.2.53:53"}
+        values: 0+1x15
+      - series: coredns_proxy_healthcheck_failures_total{job="coredns",instance="dns:9153",proxy_name="grpc",to="192.0.2.54:53"}
+        values: 0+1x15
+      - series: coredns_forward_healthcheck_broken_total{job="coredns",instance="dns:9153"}
+        values: 0+1x15
+      - series: coredns_forward_healthcheck_broken_total{job="other",instance="dns:9153"}
+        values: 0+1x15
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: CoreDNSForwardLatencyHigh
+      - eval_time: 10m
+        alertname: CoreDNSForwardErrorsHigh
+      - eval_time: 10m
+        alertname: CoreDNSForwardHealthcheckFailureCount
+      - eval_time: 10m
+        alertname: CoreDNSForwardHealthcheckBrokenCount
+      - eval_time: 11m
+        alertname: CoreDNSForwardLatencyHigh
+        exp_alerts:
+          - exp_labels:
+              job: coredns
+              proxy_name: forward
+              to: "192.0.2.53:53"
+              owner: prometheus
+              severity: critical
+            exp_annotations:
+              summary: CoreDNS is experiencing high latency forwarding requests.
+              description: CoreDNS has 99th percentile latency of 8.151s forwarding requests to 192.0.2.53:53.
+      - eval_time: 11m
+        alertname: CoreDNSForwardErrorsHigh
+        exp_alerts:
+          - exp_labels:
+              job: coredns
+              proxy_name: forward
+              to: "192.0.2.53:53"
+              owner: prometheus
+              severity: critical
+            exp_annotations:
+              summary: CoreDNS is returning SERVFAIL for forward requests.
+              description: CoreDNS is returning SERVFAIL for 4% of forward requests to 192.0.2.53:53.
+          - exp_labels:
+              job: coredns
+              proxy_name: forward
+              to: "192.0.2.53:53"
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: CoreDNS is returning SERVFAIL for forward requests.
+              description: CoreDNS is returning SERVFAIL for 4% of forward requests to 192.0.2.53:53.
+      - eval_time: 11m
+        alertname: CoreDNSForwardHealthcheckFailureCount
+        exp_alerts:
+          - exp_labels:
+              job: coredns
+              proxy_name: forward
+              to: "192.0.2.53:53"
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: CoreDNS health checks have failed to upstream server.
+              description: CoreDNS health checks have failed to upstream server 192.0.2.53:53.
+      - eval_time: 11m
+        alertname: CoreDNSForwardHealthcheckBrokenCount
+        exp_alerts:
+          - exp_labels:
+              job: coredns
+              owner: prometheus
+              severity: warning
+            exp_annotations:
+              summary: CoreDNS health checks have failed for all upstream servers.
+              description: CoreDNS received requests while all forwarding upstreams were unhealthy.
