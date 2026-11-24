@@ -3,6 +3,7 @@ local dashboard = (import 'dashboard.libsonnet')(targets);
 local alerts = (import 'alerts.libsonnet')(targets);
 local grafanaAlerts = import 'grafana-alerts.libsonnet';
 local kubernetes = (import 'kubernetes.libsonnet');
+local nodeExporter = import 'node-exporter.libsonnet';
 
 {
   'alertmanager.yaml': std.manifestYamlDoc({
@@ -26,4 +27,4 @@ local kubernetes = (import 'kubernetes.libsonnet');
   'prometheus-rules.yaml': std.manifestYamlDoc({ groups: [alerts.static] }) + '\n',
   'vector-rules.yaml': std.manifestYamlDoc({ groups: [alerts.vector] }) + '\n',
   'static-targets.json': std.manifestJsonEx(dashboard, '  ') + '\n',
-} + kubernetes
+} + kubernetes + nodeExporter

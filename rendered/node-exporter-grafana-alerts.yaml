@@ -1,0 +1,947 @@
+apiVersion: 1
+groups:
+  - folder: Node Exporter
+    interval: 1m
+    name: node-exporter
+    orgId: 1
+    rules:
+      - annotations:
+          description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint }}, at {{ $labels.instance }} has only {{ printf "%.2f" $values.A.Value }}% available space left and is filling up.
+          summary: Filesystem is predicted to run out of space within the next 24 hours.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  node_filesystem_avail_bytes{job="node-exporter",fstype!="",mountpoint!=""} / node_filesystem_size_bytes{job="node-exporter",fstype!="",mountpoint!=""} * 100 < 40
+                and
+                  predict_linear(node_filesystem_avail_bytes{job="node-exporter",fstype!="",mountpoint!=""}[6h], 24*60*60) < 0
+                and
+                  node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!=""} == 0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeFilesystemSpaceFillingUp
+          severity: warning
+        noDataState: OK
+        title: NodeFilesystemSpaceFillingUp (severity=warning)
+        uid: obs-85355ddf0b7130b43acf368c837e7655
+      - annotations:
+          description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint }}, at {{ $labels.instance }} has only {{ printf "%.2f" $values.A.Value }}% available space left and is filling up fast.
+          summary: Filesystem is predicted to run out of space within the next 4 hours.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  node_filesystem_avail_bytes{job="node-exporter",fstype!="",mountpoint!=""} / node_filesystem_size_bytes{job="node-exporter",fstype!="",mountpoint!=""} * 100 < 20
+                and
+                  predict_linear(node_filesystem_avail_bytes{job="node-exporter",fstype!="",mountpoint!=""}[6h], 4*60*60) < 0
+                and
+                  node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!=""} == 0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeFilesystemSpaceFillingUp
+          severity: critical
+        noDataState: OK
+        title: NodeFilesystemSpaceFillingUp (severity=critical)
+        uid: obs-c43b9996f90452fdd10df88e14496850
+      - annotations:
+          description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint }}, at {{ $labels.instance }} has only {{ printf "%.2f" $values.A.Value }}% available space left.
+          summary: Filesystem has less than 5% space left.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  node_filesystem_avail_bytes{job="node-exporter",fstype!="",mountpoint!=""} / node_filesystem_size_bytes{job="node-exporter",fstype!="",mountpoint!=""} * 100 < 5
+                and
+                  node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!=""} == 0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 30m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeFilesystemAlmostOutOfSpace
+          severity: warning
+        noDataState: OK
+        title: NodeFilesystemAlmostOutOfSpace (severity=warning)
+        uid: obs-162cc73ade9b64445a33eea1084b9a79
+      - annotations:
+          description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint }}, at {{ $labels.instance }} has only {{ printf "%.2f" $values.A.Value }}% available space left.
+          summary: Filesystem has less than 3% space left.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  node_filesystem_avail_bytes{job="node-exporter",fstype!="",mountpoint!=""} / node_filesystem_size_bytes{job="node-exporter",fstype!="",mountpoint!=""} * 100 < 3
+                and
+                  node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!=""} == 0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 30m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeFilesystemAlmostOutOfSpace
+          severity: critical
+        noDataState: OK
+        title: NodeFilesystemAlmostOutOfSpace (severity=critical)
+        uid: obs-6e5ac8a2f00b3e808afc0b8caddbdbfd
+      - annotations:
+          description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint }}, at {{ $labels.instance }} has only {{ printf "%.2f" $values.A.Value }}% available inodes left and is filling up.
+          summary: Filesystem is predicted to run out of inodes within the next 24 hours.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  node_filesystem_files_free{job="node-exporter",fstype!="",mountpoint!=""} / node_filesystem_files{job="node-exporter",fstype!="",mountpoint!=""} * 100 < 40
+                and
+                  predict_linear(node_filesystem_files_free{job="node-exporter",fstype!="",mountpoint!=""}[6h], 24*60*60) < 0
+                and
+                  node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!=""} == 0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeFilesystemFilesFillingUp
+          severity: warning
+        noDataState: OK
+        title: NodeFilesystemFilesFillingUp (severity=warning)
+        uid: obs-f93f1291545e0f39401f79b6998ef7e8
+      - annotations:
+          description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint }}, at {{ $labels.instance }} has only {{ printf "%.2f" $values.A.Value }}% available inodes left and is filling up fast.
+          summary: Filesystem is predicted to run out of inodes within the next 4 hours.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  node_filesystem_files_free{job="node-exporter",fstype!="",mountpoint!=""} / node_filesystem_files{job="node-exporter",fstype!="",mountpoint!=""} * 100 < 20
+                and
+                  predict_linear(node_filesystem_files_free{job="node-exporter",fstype!="",mountpoint!=""}[6h], 4*60*60) < 0
+                and
+                  node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!=""} == 0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeFilesystemFilesFillingUp
+          severity: critical
+        noDataState: OK
+        title: NodeFilesystemFilesFillingUp (severity=critical)
+        uid: obs-e55212fbc386008dfbaa3acf330dbbb9
+      - annotations:
+          description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint }}, at {{ $labels.instance }} has only {{ printf "%.2f" $values.A.Value }}% available inodes left.
+          summary: Filesystem has less than 5% inodes left.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  node_filesystem_files_free{job="node-exporter",fstype!="",mountpoint!=""} / node_filesystem_files{job="node-exporter",fstype!="",mountpoint!=""} * 100 < 5
+                and
+                  node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!=""} == 0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeFilesystemAlmostOutOfFiles
+          severity: warning
+        noDataState: OK
+        title: NodeFilesystemAlmostOutOfFiles (severity=warning)
+        uid: obs-fae1092372a4933372df50a0c5184482
+      - annotations:
+          description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint }}, at {{ $labels.instance }} has only {{ printf "%.2f" $values.A.Value }}% available inodes left.
+          summary: Filesystem has less than 3% inodes left.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  node_filesystem_files_free{job="node-exporter",fstype!="",mountpoint!=""} / node_filesystem_files{job="node-exporter",fstype!="",mountpoint!=""} * 100 < 3
+                and
+                  node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!=""} == 0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeFilesystemAlmostOutOfFiles
+          severity: critical
+        noDataState: OK
+        title: NodeFilesystemAlmostOutOfFiles (severity=critical)
+        uid: obs-308e26de5a95de882155652f1308c324
+      - annotations:
+          description: "{{ $labels.instance }} interface {{ $labels.device }} had a receive error ratio of {{ $values.A.Value | humanizePercentage }} over the last two minutes."
+          summary: Network interface is reporting many receive errors.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                rate(node_network_receive_errs_total{job="node-exporter"}[2m]) / rate(node_network_receive_packets_total{job="node-exporter"}[2m]) > 0.01
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeNetworkReceiveErrs
+          severity: warning
+        noDataState: OK
+        title: NodeNetworkReceiveErrs
+        uid: obs-4652565a60e6487b8a5531c5d3467fcf
+      - annotations:
+          description: "{{ $labels.instance }} interface {{ $labels.device }} had a transmit error ratio of {{ $values.A.Value | humanizePercentage }} over the last two minutes."
+          summary: Network interface is reporting many transmit errors.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                rate(node_network_transmit_errs_total{job="node-exporter"}[2m]) / rate(node_network_transmit_packets_total{job="node-exporter"}[2m]) > 0.01
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 1h
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeNetworkTransmitErrs
+          severity: warning
+        noDataState: OK
+        title: NodeNetworkTransmitErrs
+        uid: obs-e5e6877deeb52e4c49e3601e71f0507f
+      - annotations:
+          description: "{{ $labels.instance }} {{ $values.A.Value | humanizePercentage }} of conntrack entries are used."
+          summary: Number of conntrack are getting close to the limit.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (node_nf_conntrack_entries{job="node-exporter"} / node_nf_conntrack_entries_limit) > 0.75
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 0s
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeHighNumberConntrackEntriesUsed
+          severity: warning
+        noDataState: OK
+        title: NodeHighNumberConntrackEntriesUsed
+        uid: obs-1c229b691428503d70151aab337b6ce8
+      - annotations:
+          description: Clock at {{ $labels.instance }} is out of sync by more than 0.05s. Ensure NTP is configured correctly on this host.
+          summary: Clock skew detected.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  node_timex_offset_seconds{job="node-exporter"} > 0.05
+                and
+                  deriv(node_timex_offset_seconds{job="node-exporter"}[5m]) >= 0
+                )
+                or
+                (
+                  node_timex_offset_seconds{job="node-exporter"} < -0.05
+                and
+                  deriv(node_timex_offset_seconds{job="node-exporter"}[5m]) <= 0
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeClockSkewDetected
+          severity: warning
+        noDataState: OK
+        title: NodeClockSkewDetected
+        uid: obs-e01b05429b329adc2f4ff5fa1248b931
+      - annotations:
+          description: Clock at {{ $labels.instance }} is not synchronising. Ensure NTP is configured on this host.
+          summary: Clock not synchronising.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                min_over_time(node_timex_sync_status{job="node-exporter"}[5m]) == 0
+                and
+                node_timex_maxerror_seconds{job="node-exporter"} >= 16
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 10m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeClockNotSynchronising
+          severity: warning
+        noDataState: OK
+        title: NodeClockNotSynchronising
+        uid: obs-b01ff5081178663672da23d93afdcdb9
+      - annotations:
+          description: RAID array '{{ $labels.device }}' at {{ $labels.instance }} is in degraded state due to one or more disks failures. Number of spare drives is insufficient to fix issue automatically.
+          summary: RAID Array is degraded.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                node_md_disks_required{job="node-exporter",device!=""} - ignoring (state) (node_md_disks{state="active",job="node-exporter",device!=""}) > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeRAIDDegraded
+          severity: critical
+        noDataState: OK
+        title: NodeRAIDDegraded
+        uid: obs-94d107ded2bccd471057cd2cb52c55b7
+      - annotations:
+          description: At least one device in RAID array at {{ $labels.instance }} failed. Array '{{ $labels.device }}' needs attention and possibly a disk swap.
+          summary: Failed device in RAID array.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                node_md_disks{state="failed",job="node-exporter",device!=""} > 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 0s
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeRAIDDiskFailure
+          severity: warning
+        noDataState: OK
+        title: NodeRAIDDiskFailure
+        uid: obs-6d5ea4b0d780474cbd80b0e4f4d11046
+      - annotations:
+          description: File descriptors limit at {{ $labels.instance }} is currently at {{ printf "%.2f" $values.A.Value }}%.
+          summary: Kernel is predicted to exhaust file descriptors limit soon.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  node_filefd_allocated{job="node-exporter"} * 100 / node_filefd_maximum{job="node-exporter"} > 70
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeFileDescriptorLimit
+          severity: warning
+        noDataState: OK
+        title: NodeFileDescriptorLimit (severity=warning)
+        uid: obs-04b93a4a6c94a3d84ee015a113ebdd58
+      - annotations:
+          description: File descriptors limit at {{ $labels.instance }} is currently at {{ printf "%.2f" $values.A.Value }}%.
+          summary: Kernel is predicted to exhaust file descriptors limit soon.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (
+                  node_filefd_allocated{job="node-exporter"} * 100 / node_filefd_maximum{job="node-exporter"} > 90
+                )
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeFileDescriptorLimit
+          severity: critical
+        noDataState: OK
+        title: NodeFileDescriptorLimit (severity=critical)
+        uid: obs-7b8c48bce9e193d584db70fbda6ba73e
+      - annotations:
+          description: |
+            CPU usage at {{ $labels.instance }} has been above 90% for the last 15 minutes, is currently at {{ printf "%.2f" $values.A.Value }}%.
+          summary: High CPU usage.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                sum without(mode) (avg without (cpu) (rate(node_cpu_seconds_total{job="node-exporter", mode!~"idle|iowait"}[2m]))) * 100 > 90
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeCPUHighUsage
+          severity: info
+        noDataState: OK
+        title: NodeCPUHighUsage
+        uid: obs-48ec9d1d6b45263e2f125680010b72ed
+      - annotations:
+          description: |
+            System load per core at {{ $labels.instance }} has been above 2 for the last 15 minutes, is currently at {{ printf "%.2f" $values.A.Value }}.
+            This might indicate this instance resources saturation and can cause it becoming unresponsive.
+          summary: System saturated, load per core is very high.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                node_load1{job="node-exporter"}
+                / count without (cpu, mode) (node_cpu_seconds_total{job="node-exporter", mode="idle"}) > 2
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeSystemSaturation
+          severity: warning
+        noDataState: OK
+        title: NodeSystemSaturation
+        uid: obs-f37c750d8f62b0006fbefea654dda64e
+      - annotations:
+          description: |
+            Memory major pages are occurring at very high rate at {{ $labels.instance }}, 500 major page faults per second for the last 15 minutes, is currently at {{ printf "%.2f" $values.A.Value }}.
+            Please check that there is enough memory available at this instance.
+          summary: Memory major page faults are occurring at very high rate.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                rate(node_vmstat_pgmajfault{job="node-exporter"}[5m]) > 500
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeMemoryMajorPagesFaults
+          severity: warning
+        noDataState: OK
+        title: NodeMemoryMajorPagesFaults
+        uid: obs-917c53e94502abacffddc5466a370d12
+      - annotations:
+          description: |
+            Memory is filling up at {{ $labels.instance }}, has been above 90% for the last 15 minutes, is currently at {{ printf "%.2f" $values.A.Value }}%.
+          summary: Host is running out of memory.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                100 - (node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"} * 100) > 90
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeMemoryHighUtilization
+          severity: warning
+        noDataState: OK
+        title: NodeMemoryHighUtilization
+        uid: obs-d80e582cd33ef61e58d6a5884826e413
+      - annotations:
+          description: |
+            Disk IO queue (aqu-sq) is high on {{ $labels.device }} at {{ $labels.instance }}, has been above 10 for the last 30 minutes, is currently at {{ printf "%.2f" $values.A.Value }}.
+            This symptom might indicate disk saturation.
+          summary: Disk IO queue is high.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                rate(node_disk_io_time_weighted_seconds_total{job="node-exporter", device!=""}[5m]) > 10
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 30m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeDiskIOSaturation
+          severity: warning
+        noDataState: OK
+        title: NodeDiskIOSaturation
+        uid: obs-a118b5e26f72fe521529fb78bcd38def
+      - annotations:
+          description: Systemd service {{ $labels.name }} has entered failed state at {{ $labels.instance }}
+          summary: Systemd service has entered failed state.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                node_systemd_unit_state{job="node-exporter", state="failed"} == 1
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeSystemdServiceFailed
+          severity: warning
+        noDataState: OK
+        title: NodeSystemdServiceFailed
+        uid: obs-2b900a8b861f50f29061dc241c2fcc30
+      - annotations:
+          description: Systemd service {{ $labels.name }} has being restarted too many times at {{ $labels.instance }} for the last 15 minutes. Please check if service is crash looping.
+          summary: Systemd service keeps restaring, possibly crash looping.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                increase(node_systemd_service_restart_total{job="node-exporter"}[5m]) > 2
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 15m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeSystemdServiceCrashlooping
+          severity: warning
+        noDataState: OK
+        title: NodeSystemdServiceCrashlooping
+        uid: obs-a705e7318c8462b069a47804216ae4a8
+      - annotations:
+          description: Bonding interface {{ $labels.master }} on {{ $labels.instance }} is in degraded state due to one or more slave failures.
+          summary: Bonding interface is degraded.
+        condition: B
+        data:
+          - datasourceUid: prometheus
+            model:
+              expr: |
+                (node_bonding_slaves{job="node-exporter"} - node_bonding_active{job="node-exporter"}) != 0
+              instant: true
+              range: false
+              refId: A
+            refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - datasourceUid: __expr__
+            model:
+              expression: is_null($A) == 0
+              refId: B
+              type: math
+            refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+        execErrState: Error
+        for: 5m
+        isPaused: true
+        labels:
+          owner: grafana
+          prometheus_alertname: NodeBondingDegraded
+          severity: warning
+        noDataState: OK
+        title: NodeBondingDegraded
+        uid: obs-4a974da7f1ea54c95c2c19e56fa4e38a
