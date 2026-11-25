@@ -91,34 +91,32 @@ func runnerScalar(node *yaml.Node) (string, bool) {
 	}
 	value, tag := node.Value, node.ShortTag()
 	style := node.Style &^ yaml.TaggedStyle
-	if tag == "!!str" && (node.Style&yaml.TaggedStyle != 0 || style != 0) {
+	explicit := node.Style&yaml.TaggedStyle != 0
+	if (explicit && tag == "!!str") || (!explicit && style != 0) {
 		return value, true
 	}
 	if style != 0 {
 		return "", false
 	}
-	explicit := node.Style&yaml.TaggedStyle != 0
+	if !explicit {
+		tag = ""
+	}
 	switch value {
 	case "", "~", "null", "Null", "NULL":
-		return "", !explicit || tag == "!!null"
+		return "", tag == "" || tag == "!!null"
 	case "true", "True", "TRUE", "false", "False", "FALSE":
-		return strings.ToLower(value), !explicit || tag == "!!bool"
+		return strings.ToLower(value), tag == "" || tag == "!!bool"
 	}
-	switch {
-	case tag == "!!int" && !explicit, tag == "!!float" && !explicit,
-		!explicit && decimalNumber.MatchString(value),
-		explicit && tag == "!!int" && (decimalInteger.MatchString(value) || hexInteger.MatchString(value) || octalInteger.MatchString(value)),
-		explicit && tag == "!!float" && !hexInteger.MatchString(value) && !octalInteger.MatchString(value):
-		return runnerNumber(value)
-	case !explicit:
-		return value, true
+	switch tag {
+	case "", "!!int", "!!float":
+		return runnerNumberOrString(value, tag)
 	}
 	return "", false
 }
 
-func runnerNumber(value string) (string, bool) {
+func runnerNumberOrString(value, tag string) (string, bool) {
 	switch {
-	case hexInteger.MatchString(value), octalInteger.MatchString(value):
+	case tag != "!!float" && (hexInteger.MatchString(value) || octalInteger.MatchString(value)):
 		base := 16
 		if value[1] == 'o' {
 			base = 8
@@ -128,22 +126,24 @@ func runnerNumber(value string) (string, bool) {
 			return "", false
 		}
 		return formatRunnerNumber(float64(int32(integer))), true
-	case decimalNumber.MatchString(value):
+	case tag == "!!int" && decimalInteger.MatchString(value), tag != "!!int" && decimalNumber.MatchString(value):
 		number, err := strconv.ParseFloat(value, 64)
 		if err != nil && !errors.Is(err, strconv.ErrRange) {
 			return "", false
 		}
 		return formatRunnerNumber(number), true
 	}
-	switch value {
-	case ".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF":
-		return "Infinity", true
-	case "-.inf", "-.Inf", "-.INF":
-		return "-Infinity", true
-	case ".nan", ".NaN", ".NAN":
-		return "NaN", true
+	if tag != "!!int" {
+		switch value {
+		case ".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF":
+			return "Infinity", true
+		case "-.inf", "-.Inf", "-.INF":
+			return "-Infinity", true
+		case ".nan", ".NaN", ".NAN":
+			return "NaN", true
+		}
 	}
-	return "", false
+	return value, tag == ""
 }
 
 // GitHub's NumberToken formats doubles with invariant G15.

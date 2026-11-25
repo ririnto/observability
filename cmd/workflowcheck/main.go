@@ -136,29 +136,24 @@ func checkInputs(path string, action actionStep, users []actionStep) []error {
 				}
 			}
 
-			fix := "omit this input"
+			advice, fix := "omit-input", "omit this input"
 			switch {
 			case value.Kind == yaml.AliasNode:
 				line = value.Line
 				if source.collection != nil {
 					line = source.collection.Line
 				}
-				fix = "hand edit this value alias and preserve its anchor and every use"
+				advice, fix = "hand-edit", "hand edit this value alias and preserve its anchor and every use"
 			case source.collection != nil:
 				line = source.collection.Line
-				fix = "detach this step's mapping and preserve the shared definition"
+				advice, fix = "detach-and-omit", "detach this step's mapping and omit this input from the detached mapping. Preserve the shared definition"
 				if source.collection.Alias != action.inputs.node {
 					fix = "expand the enclosing alias, then " + fix
 				}
-				if sharedDefault {
-					fix += ". Omit this input from the detached mapping"
-				} else {
-					fix += ". Review the detached mapping by hand"
-				}
 			case !sharedDefault:
-				fix = "review this shared definition by hand"
+				advice, fix = "shared-definition", "review this shared definition by hand"
 			case len(source.anchors) != 0:
-				fix = "hand edit this input and preserve the referenced anchors"
+				advice, fix = "hand-edit", "hand edit this input and preserve the referenced anchors"
 			default:
 				for _, node := range []*yaml.Node{key, value} {
 					if node.Anchor != "" {
@@ -180,7 +175,7 @@ func checkInputs(path string, action actionStep, users []actionStep) []error {
 				}
 			}
 			findings = append(findings, fmt.Errorf(
-				"%s:%d: R35 %s %s: %s (documented default %q at %s)", path, line, action.ref, name, fix, input.value, action.metadata.revision,
+				"%s:%d: R35 %s %s [%s]: %s (documented default %q at %s)", path, line, action.ref, name, advice, fix, input.value, action.metadata.revision,
 			))
 		}
 	}

@@ -19,12 +19,15 @@ inputs:
   number:
     description: Numeric default
     default: 100000000000002
-  unsupported:
-    description: Unsupported numeric default
+  plain-text:
+    description: Plain string default
     default: 0b1
   text:
     description: String default
     default: '0b1'
+  wide:
+    description: Out-of-range hexadecimal string
+    default: '0x100000000'
   missing:
     description: Omitted default
 runs:
@@ -99,8 +102,9 @@ jobs:
           empty: 'null'
           midpoint: 100000000000001.4
           number: '100000000000002.0'
-          unsupported: '0b1'
-          text: 0b1
+          plain-text: '0b2'
+          text: '0b2'
+          wide: 0x100000000
           missing: ''
 YAML
 
@@ -112,34 +116,46 @@ git -C "$directory" update-ref HEAD "$commit"
 
 assert_records() {
 	awk '
-		NR == FNR {
+		FILENAME == ARGV[1] {
 			expected[NR] = $0
 			next
 		}
 		{
+			record = $0
 			gsub(/[^[:alnum:]_.\/@-]+/, " ")
 			file = $1
 			sub(/^.*\//, "", file)
+			found = 0
 			if ($2 ~ /^[0-9]+$/) {
+				advice = ""
 				for (k = 3; k <= NF; k++) {
 					token = $k
 					sub(/\.+$/, "", token)
+					if (token ~ /^(omit-input|detach-and-omit|hand-edit|shared-definition)$/) {
+						advice = token
+					}
 					tokens[token] = NR
 				}
 				for (i in expected) {
 					fields = split(expected[i], want)
-					if (file == want[1] && $2 + 0 == want[2] + 0) {
+					if (file == want[1] && $2 + 0 == want[2] + 0 && tokens[want[3]] == NR &&
+						(fields == 3 || tokens[want[4]] == NR) && (fields < 5 || advice == want[5])) {
 						matched = 1
-						for (j = 3; j <= fields; j++) {
+						for (j = 6; j <= fields; j++) {
 							if (tokens[want[j]] != NR) {
 								matched = 0
 							}
 						}
 						if (matched) {
 							seen[i] = 1
+							found = 1
 						}
 					}
 				}
+			}
+			if (!found) {
+				print "Unexpected record: " record
+				failed = 1
 			}
 		}
 		END {
@@ -254,6 +270,8 @@ jobs:
           empty:
           midpoint: 100000000000002.4
           number: 100000000000001.5
+          plain-text: '0b1'
+          text: 0b1
 YAML
 git -C "$directory" add .github
 tree="$(git -C "$directory" write-tree)"
@@ -272,25 +290,37 @@ else
 fi
 
 if ! assert_records /dev/stdin "$directory/diagnostics" <<'EXPECTED'
-findings.yaml 13 actions/setup-go@v6 cache default-cache 16 23
-findings.yaml 17 pnpm/action-setup@v4 dest
-findings.yaml 18 pnpm/action-setup@v4 run_install
-findings.yaml 20 actions/setup-go@v6 cache default-cache 13 16 23
-findings.yaml 23 actions/setup-go@v6 cache default-cache 13 16
-findings.yaml 26 actions/setup-go@v6 cache pnpm/action-setup@v4 first-inputs
-findings.yaml 30 actions/setup-go@v6 cache pnpm/action-setup@v4 first-inputs
-findings.yaml 37 actions/setup-go@v6 cache second-inputs uses-key with-key
-findings.yaml 38 actions/setup-go@v6 cache step
-findings.yaml 41 actions/checkout@v6 filter
-findings.yaml 42 actions/checkout@v6 fetch-depth
-findings.yaml 45 actions/checkout@v6 fetch-depth
-findings.yaml 48 actions/checkout@v6 fetch-depth
-findings.yaml 53 actions/cache@v5 lookup-only
-findings.yaml 56 actions/setup-go@v6 cache steps
-findings.yaml 62 actions/checkout@v6 fetch-depth unused
-local.yaml 10 ./.github/actions/sample empty
-local.yaml 11 ./.github/actions/sample midpoint
-local.yaml 12 ./.github/actions/sample number
+findings.yaml 13 actions/setup-go@v6 cache hand-edit default-cache 16 23
+findings.yaml 17 pnpm/action-setup@v4 dest shared-definition
+findings.yaml 18 pnpm/action-setup@v4 run_install shared-definition
+findings.yaml 20 actions/setup-go@v6 cache hand-edit value-alias-inputs default-cache 13 16 23
+findings.yaml 23 actions/setup-go@v6 cache hand-edit default-cache 13 16
+findings.yaml 26 actions/setup-go@v6 cache shared-definition pnpm/action-setup@v4 first-inputs
+findings.yaml 30 actions/setup-go@v6 cache detach-and-omit pnpm/action-setup@v4 first-inputs
+findings.yaml 33 actions/setup-go@v6 cache hand-edit second-inputs
+findings.yaml 37 actions/setup-go@v6 cache detach-and-omit second-inputs uses-key with-key
+findings.yaml 38 actions/setup-go@v6 cache detach-and-omit step
+findings.yaml 41 actions/checkout@v6 filter hand-edit
+findings.yaml 42 actions/checkout@v6 fetch-depth hand-edit
+findings.yaml 45 actions/checkout@v6 fetch-depth hand-edit
+findings.yaml 48 actions/checkout@v6 fetch-depth hand-edit
+findings.yaml 53 actions/cache@v5 lookup-only hand-edit
+findings.yaml 56 actions/setup-go@v6 cache detach-and-omit step
+findings.yaml 56 actions/setup-go@v6 cache detach-and-omit first-inputs pnpm/action-setup@v4
+findings.yaml 56 actions/setup-go@v6 cache detach-and-omit second-inputs
+findings.yaml 56 actions/setup-go@v6 cache hand-edit value-alias-inputs default-cache
+findings.yaml 56 actions/setup-go@v6 cache hand-edit default-cache
+findings.yaml 56 pnpm/action-setup@v4 dest detach-and-omit
+findings.yaml 56 pnpm/action-setup@v4 run_install detach-and-omit
+findings.yaml 56 actions/checkout@v6 filter detach-and-omit
+findings.yaml 56 actions/checkout@v6 fetch-depth detach-and-omit
+findings.yaml 56 actions/cache@v5 lookup-only detach-and-omit
+findings.yaml 62 actions/checkout@v6 fetch-depth omit-input unused
+local.yaml 10 ./.github/actions/sample empty omit-input
+local.yaml 11 ./.github/actions/sample midpoint omit-input
+local.yaml 12 ./.github/actions/sample number omit-input
+local.yaml 13 ./.github/actions/sample plain-text omit-input
+local.yaml 14 ./.github/actions/sample text omit-input
 EXPECTED
 then
 	cat "$directory/diagnostics" >&2
