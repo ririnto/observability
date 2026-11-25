@@ -31,15 +31,36 @@ inputs:
   high-bit:
     description: Positive decimal default
     default: 2147483648
+  wide-octal:
+    description: Positive decimal default
+    default: 4294967296
   octal:
     description: Octal default
-    default: 0o40000000000
+    default: 0o100
   negative:
     description: Negative decimal default
     default: -2147483648
-  beyond-uint64:
-    description: Decimal default above the unsigned 64-bit range
-    default: 18446744073709551617
+  negative-hex:
+    description: Negative decimal default
+    default: -2147483648
+  negative-octal:
+    description: Octal default with its high bit set
+    default: 0o20000000000
+  rounded:
+    description: Decimal default
+    default: 1000000000000000
+  adjacent:
+    description: Decimal default
+    default: 1000000000000002
+  integer-midpoint:
+    description: Decimal default
+    default: 1000000000000005
+  exact-rounding:
+    description: Decimal default
+    default: 100000000000001000
+  g15-text:
+    description: Formatted number default
+    default: '1E+15'
   missing:
     description: Omitted default
 runs:
@@ -117,8 +138,8 @@ jobs:
           plain-text: '0b2'
           text: '0b2'
           wide: '0x100000000'
-          negative: 0x80000000
-          beyond-uint64: 18446744073709551616
+          negative: 2147483648
+          rounded: -1000000000000001
           missing: ''
 YAML
 
@@ -261,7 +282,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - &step
-        uses: actions/setup-go@v6
+        uses: &setup-go actions/setup-go@v6
         with:
           cache: &default-cache true
       - uses: pnpm/action-setup@v4
@@ -313,21 +334,117 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: &unused 1
+  keys-and-ref:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: *setup-go
+        with:
+          cache: true
+      - uses: actions/checkout@v6
+        ? *with-key
+        :
+          fetch-depth: 1
+      - ? *uses-key
+        : actions/checkout@v6
+        with:
+          fetch-depth: 1
 YAML
 
 cat >"$workflows/sequence.yaml" <<'YAML'
 name: Steps alias
 on: push
+env:
+  DEPTH: &depth 1
 jobs:
-  validate:
+  validate: &job
     runs-on: ubuntu-latest
     steps: &steps
-      - uses: actions/checkout@v6
+      - &step
+        uses: actions/checkout@v6
         with:
-          fetch-depth: 1
+          filter: ''
+          fetch-depth: *depth
   alias:
     runs-on: ubuntu-latest
     steps: *steps
+  step-alias:
+    runs-on: ubuntu-latest
+    steps: &reused-steps
+      - *step
+  nested:
+    runs-on: ubuntu-latest
+    steps: *reused-steps
+  job-alias: *job
+YAML
+
+cat >"$workflows/nested.yaml" <<'YAML'
+name: Nested aliases
+on: push
+env:
+  KEY: &input-key fetch-depth
+  DEPTH: &depth 1
+  OTHER_DEPTH: &other-depth 2
+  EXPRESSION: &expression ${{ github.run_number }}
+jobs:
+  define:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with: &inputs
+          filter: ''
+          ? *input-key
+          : *depth
+      - uses: actions/setup-go@v6
+        with: *inputs
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: *other-depth
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: *expression
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: *inputs
+  consume:
+    runs-on: ubuntu-latest
+    steps: &steps
+      - &step
+        uses: actions/checkout@v6
+        with: *inputs
+  step-alias:
+    runs-on: ubuntu-latest
+    steps: &reused-steps
+      - *step
+  sequence-alias:
+    runs-on: ubuntu-latest
+    steps: *steps
+  nested: &job
+    runs-on: ubuntu-latest
+    steps: *reused-steps
+  job-alias: *job
+  key-alias:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ? *input-key
+          : 1
+YAML
+
+cat >"$workflows/jobs-alias.yaml" <<'YAML'
+name: Jobs mapping alias
+on: push
+env:
+  DEPTH: &depth 1
+x-template: &job-map
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          filter: ''
+          fetch-depth: *depth
+jobs: *job-map
 YAML
 
 cat >"$workflows/local.yaml" <<'YAML'
@@ -347,9 +464,16 @@ jobs:
           text: 0b1
           wide: 4294967296
           high-bit: 0x80000000
-          octal: 4294967296
+          wide-octal: 0o40000000000
+          octal: 64
           negative: -02147483648
-          beyond-uint64: 0x10000000000000001
+          negative-hex: 0x80000000
+          negative-octal: -2147483648
+          rounded: 1000000000000001
+          adjacent: 1000000000000001
+          integer-midpoint: 1000000000000000
+          exact-rounding: 100000000000000501
+          g15-text: 1000000000000001
 YAML
 git -C "$directory" add .github
 tree="$(git -C "$directory" write-tree)"
@@ -371,7 +495,7 @@ if ! assert_records /dev/stdin "$directory/diagnostics" <<'EXPECTED'
 findings.yaml 13 actions/setup-go@v6 cache hand-edit default-cache 16 23
 findings.yaml 17 pnpm/action-setup@v4 dest shared-definition
 findings.yaml 18 pnpm/action-setup@v4 run_install shared-definition
-findings.yaml 20 actions/setup-go@v6 cache hand-edit value-alias-inputs default-cache 13 16 23
+findings.yaml 20 actions/setup-go@v6 cache detach-and-omit value-alias-inputs default-cache 13 16 23
 findings.yaml 23 actions/setup-go@v6 cache hand-edit default-cache 13 16
 findings.yaml 26 actions/setup-go@v6 cache shared-definition pnpm/action-setup@v4 first-inputs
 findings.yaml 30 actions/setup-go@v6 cache detach-and-omit pnpm/action-setup@v4 first-inputs
@@ -385,18 +509,48 @@ findings.yaml 48 actions/checkout@v6 fetch-depth omit-input
 findings.yaml 53 actions/cache@v5 lookup-only omit-input
 findings.yaml 56 actions/setup-node@v6 package-manager-cache omit-input
 findings.yaml 62 actions/checkout@v6 fetch-depth omit-input unused
+findings.yaml 68 actions/setup-go@v6 cache hand-edit setup-go
+findings.yaml 72 actions/checkout@v6 fetch-depth hand-edit with-key
+findings.yaml 76 actions/checkout@v6 fetch-depth hand-edit uses-key
 local.yaml 10 ./.github/actions/sample empty omit-input
 local.yaml 11 ./.github/actions/sample midpoint omit-input
 local.yaml 12 ./.github/actions/sample number omit-input
 local.yaml 13 ./.github/actions/sample plain-text omit-input
 local.yaml 14 ./.github/actions/sample text omit-input
-local.yaml 15 ./.github/actions/sample wide omit-input
-local.yaml 16 ./.github/actions/sample high-bit omit-input
-local.yaml 17 ./.github/actions/sample octal omit-input
-local.yaml 18 ./.github/actions/sample negative omit-input
-local.yaml 19 ./.github/actions/sample beyond-uint64 omit-input
-sequence.yaml 9 actions/checkout@v6 fetch-depth hand-edit steps
-sequence.yaml 12 actions/checkout@v6 fetch-depth detach-and-omit steps
+local.yaml 18 ./.github/actions/sample octal omit-input
+local.yaml 19 ./.github/actions/sample negative omit-input
+local.yaml 20 ./.github/actions/sample negative-hex omit-input
+local.yaml 21 ./.github/actions/sample negative-octal omit-input
+local.yaml 22 ./.github/actions/sample rounded omit-input
+local.yaml 23 ./.github/actions/sample adjacent omit-input
+local.yaml 24 ./.github/actions/sample integer-midpoint omit-input
+local.yaml 25 ./.github/actions/sample exact-rounding omit-input
+local.yaml 26 ./.github/actions/sample g15-text omit-input
+jobs-alias.yaml 13 actions/checkout@v6 filter detach-and-omit job-map
+jobs-alias.yaml 13 actions/checkout@v6 fetch-depth detach-and-omit job-map depth
+nested.yaml 14 actions/checkout@v6 filter shared-definition inputs actions/setup-go@v6
+nested.yaml 16 actions/checkout@v6 fetch-depth hand-edit inputs input-key depth actions/setup-go@v6
+nested.yaml 33 actions/checkout@v6 filter detach-and-omit inputs step steps actions/setup-go@v6
+nested.yaml 33 actions/checkout@v6 fetch-depth detach-and-omit inputs step steps input-key depth actions/setup-go@v6
+nested.yaml 37 actions/checkout@v6 filter detach-and-omit inputs step reused-steps
+nested.yaml 37 actions/checkout@v6 fetch-depth detach-and-omit inputs step reused-steps input-key depth
+nested.yaml 40 actions/checkout@v6 filter detach-and-omit inputs step steps
+nested.yaml 40 actions/checkout@v6 fetch-depth detach-and-omit inputs step steps input-key depth
+nested.yaml 43 actions/checkout@v6 filter detach-and-omit inputs step reused-steps job
+nested.yaml 43 actions/checkout@v6 fetch-depth detach-and-omit inputs step reused-steps job input-key depth
+nested.yaml 44 actions/checkout@v6 filter detach-and-omit inputs step reused-steps job
+nested.yaml 44 actions/checkout@v6 fetch-depth detach-and-omit inputs step reused-steps job input-key depth
+nested.yaml 50 actions/checkout@v6 fetch-depth hand-edit input-key
+sequence.yaml 12 actions/checkout@v6 filter hand-edit job steps step
+sequence.yaml 13 actions/checkout@v6 fetch-depth hand-edit job steps step depth
+sequence.yaml 16 actions/checkout@v6 filter detach-and-omit steps step
+sequence.yaml 16 actions/checkout@v6 fetch-depth detach-and-omit steps step depth
+sequence.yaml 20 actions/checkout@v6 filter detach-and-omit step reused-steps
+sequence.yaml 20 actions/checkout@v6 fetch-depth detach-and-omit step reused-steps depth
+sequence.yaml 23 actions/checkout@v6 filter detach-and-omit step reused-steps
+sequence.yaml 23 actions/checkout@v6 fetch-depth detach-and-omit step reused-steps depth
+sequence.yaml 24 actions/checkout@v6 filter detach-and-omit job steps step
+sequence.yaml 24 actions/checkout@v6 fetch-depth detach-and-omit job steps step depth
 EXPECTED
 then
 	cat "$directory/diagnostics" >&2

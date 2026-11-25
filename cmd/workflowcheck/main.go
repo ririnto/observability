@@ -138,18 +138,15 @@ func checkInputs(path string, action actionStep, users []actionStep) []error {
 
 			advice, fix := "omit-input", "omit this input"
 			switch {
-			case value.Kind == yaml.AliasNode:
-				line = value.Line
-				if source.collection != nil {
-					line = source.collection.Line
-				}
-				advice, fix = "hand-edit", "hand edit this value alias and preserve its anchor and every use"
 			case source.collection != nil:
-				line = source.collection.Line
+				line = source.line()
 				advice, fix = "detach-and-omit", "detach this step's mapping and omit this input from the detached mapping. Preserve the shared definition"
 				if source.collection.Alias != action.inputs.node {
-					fix = "expand the enclosing alias, then " + fix
+					fix = "expand the enclosing aliases for this step, then " + fix
 				}
+			case source.origin.Kind == yaml.AliasNode:
+				line = source.line()
+				advice, fix = "hand-edit", "hand edit this value alias and preserve its anchor and every use"
 			case !sharedDefault:
 				advice, fix = "shared-definition", "review this shared definition by hand"
 			case len(source.anchors) != 0:

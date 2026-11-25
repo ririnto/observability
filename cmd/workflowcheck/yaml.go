@@ -85,6 +85,8 @@ var (
 	octalInteger   = regexp.MustCompile(`^0o[0-7]+$`)
 )
 
+const runnerNumberPrecision = 15
+
 func runnerScalar(node *yaml.Node) (string, bool) {
 	node = resolveAlias(node)
 	if node == nil || node.Kind != yaml.ScalarNode {
@@ -116,23 +118,19 @@ func runnerScalar(node *yaml.Node) (string, bool) {
 }
 
 func runnerNumberOrString(value, tag string) (string, bool) {
-	digits, base := value, 0
 	if tag != "!!float" {
 		switch {
 		case decimalInteger.MatchString(value):
-			base = 10
+			integer, ok := new(big.Int).SetString(value, 10)
+			if !ok {
+				return "", false
+			}
+			return new(big.Float).SetInt(integer).Text('G', runnerNumberPrecision), true
 		case hexInteger.MatchString(value):
-			digits, base = value[2:], 16
+			return runnerRadixInteger(value[2:], 16)
 		case octalInteger.MatchString(value):
-			digits, base = value[2:], 8
+			return runnerRadixInteger(value[2:], 8)
 		}
-	}
-	if base != 0 {
-		integer, ok := new(big.Int).SetString(digits, base)
-		if !ok {
-			return "", false
-		}
-		return integer.String(), true
 	}
 	if tag != "!!int" && decimalNumber.MatchString(value) {
 		number, err := strconv.ParseFloat(value, 64)
@@ -154,6 +152,18 @@ func runnerNumberOrString(value, tag string) (string, bool) {
 	return value, tag == ""
 }
 
+func runnerRadixInteger(digits string, base int) (string, bool) {
+	bits, err := strconv.ParseUint(digits, base, 32)
+	if err != nil {
+		return "", false
+	}
+	signed := int64(bits)
+	if signed > math.MaxInt32 {
+		signed -= 1 << 32
+	}
+	return strconv.FormatInt(signed, 10), true
+}
+
 // GitHub's NumberToken formats doubles with invariant G15.
 func formatRunnerNumber(number float64) string {
 	switch {
@@ -162,6 +172,6 @@ func formatRunnerNumber(number float64) string {
 	case math.IsInf(number, -1):
 		return "-Infinity"
 	default:
-		return strconv.FormatFloat(number, 'G', 15, 64)
+		return strconv.FormatFloat(number, 'G', runnerNumberPrecision, 64)
 	}
 }
