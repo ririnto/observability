@@ -14,8 +14,12 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "Usage: workflowcheck WORKFLOWS_DIRECTORY")
+		fmt.Fprintln(os.Stderr, "Usage: workflowcheck WORKFLOWS_DIRECTORY | --list-metadata")
 		os.Exit(2)
+	}
+	if os.Args[1] == "--list-metadata" {
+		printMetadata()
+		return
 	}
 	if err := check(os.Args[1]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -38,6 +42,12 @@ func check(directory string) error {
 	return errors.Join(findings...)
 }
 
+type actionStep struct {
+	ref      string
+	inputs   yamlSource
+	metadata actionMetadata
+}
+
 func checkWorkflow(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -51,66 +61,104 @@ func checkWorkflow(path string) error {
 		return nil
 	}
 
-	root := yamlSource{node: document.Content[0], aliases: referencedAnchors(&document)}
+	root := yamlSource{aliases: referencedAnchors(&document)}.child(document.Content[0])
 	jobs := root.field("jobs")
-	type actionStep struct {
-		ref    string
-		inputs yamlSource
-	}
-	var stepsToCheck []actionStep
-	mappingUsers := make(map[*yaml.Node][]string)
-	for _, job := range mappingPairs(jobs.node) {
-		steps := jobs.child(job).field("steps")
+	var actions []actionStep
+	mappingUsers := make(map[*yaml.Node][]actionStep)
+	var revision *workflowRevision
+	for key, job := range mappingPairs(jobs.node) {
+		steps := jobs.child(key).child(job).field("steps")
+		workspaceMayDiffer := false
 		if steps.node != nil && steps.node.Kind == yaml.SequenceNode {
 			for _, node := range steps.node.Content {
 				step := steps.child(node)
-				uses, inputs := step.field("uses").node, step.field("with")
-				if uses != nil && inputs.node != nil && inputs.node.Kind == yaml.MappingNode {
-					stepsToCheck = append(stepsToCheck, actionStep{ref: uses.Value, inputs: inputs})
-					if len(inputs.aliases[inputs.node]) != 0 && !slices.Contains(mappingUsers[inputs.node], uses.Value) {
-						mappingUsers[inputs.node] = append(mappingUsers[inputs.node], uses.Value)
+				uses, inputs := step.field("uses"), step.field("with")
+				if uses.node != nil {
+					ref := uses.node.Value
+					metadata := actionDefaults[ref]
+					if strings.HasPrefix(ref, "./") {
+						var reason string
+						if workspaceMayDiffer {
+							reason = "an earlier step may replace the workspace"
+						} else {
+							if revision == nil {
+								revision = readWorkflowRevision(path, data)
+							}
+							metadata, reason = revision.localMetadata(ref)
+						}
+						if reason != "" {
+							if _, err := fmt.Fprintf(os.Stdout, "%s:%d: %s left to review: %s\n", path, uses.line(), ref, reason); err != nil {
+								return fmt.Errorf("write local action review report: %w", err)
+							}
+						}
+					}
+					if inputs.node != nil && inputs.node.Kind == yaml.MappingNode {
+						inputs.anchors = slices.Concat(inputs.anchors, uses.anchors)
+						action := actionStep{ref: ref, inputs: inputs, metadata: metadata}
+						actions = append(actions, action)
+						mappingUsers[inputs.node] = append(mappingUsers[inputs.node], action)
 					}
 				}
+				workspaceMayDiffer = workspaceMayDiffer || mayReplaceWorkspace(uses.node, inputs, step.field("run").node)
 			}
 		}
 	}
 	var findings []error
-	for _, step := range stepsToCheck {
-		findings = append(findings, checkInputs(path, step.ref, step.inputs, mappingUsers[step.inputs.node])...)
+	for _, action := range actions {
+		findings = append(findings, checkInputs(path, action, mappingUsers[action.inputs.node])...)
 	}
 	return errors.Join(findings...)
 }
 
-func checkInputs(path, ref string, inputs yamlSource, mappingUsers []string) []error {
-	action, ok := actionDefaults[ref]
-	if !ok {
-		return nil
+func (source yamlSource) line() int {
+	if source.collection != nil {
+		return source.collection.Line
 	}
+	return source.origin.Line
+}
 
+func checkInputs(path string, action actionStep, users []actionStep) []error {
 	var findings []error
-	for key, value := range mappingPairs(inputs.node) {
+	for key, value := range mappingPairs(action.inputs.node) {
 		name := resolveAlias(key).Value
-		input, ok := action.inputs[strings.ToLower(name)]
-		if ok && input.kind == literalDefault && matchesDefault(value, input.value) {
+		input := action.metadata.input(name)
+		actual, known := runnerScalar(value)
+		if known && !strings.Contains(actual, "${{") && input.kind == literalDefault && actual == input.value {
+			source := action.inputs.child(key).child(value)
 			line := key.Line
-			fix := "omit this input"
-			var references []string
-			anchors := slices.Clone(inputs.anchors)
-			for _, node := range []*yaml.Node{key, value} {
-				anchor := resolveAlias(node)
-				if len(inputs.aliases[anchor]) != 0 && !slices.Contains(anchors, anchor) {
-					anchors = append(anchors, anchor)
+			var otherRefs []string
+			sharedDefault := true
+			for _, user := range users {
+				defaultForUser := user.metadata.input(name)
+				sharedDefault = sharedDefault && defaultForUser.kind == literalDefault && defaultForUser.value == actual
+				if !slices.Contains(otherRefs, user.ref) {
+					otherRefs = append(otherRefs, user.ref)
 				}
 			}
+
+			fix := "omit this input"
 			switch {
-			case inputs.alias != nil:
-				line = inputs.alias.Line
-				fix = "detach this step's mapping at the alias use and omit this input there. Leave the shared definition intact"
 			case value.Kind == yaml.AliasNode:
 				line = value.Line
-				fix = "review this input alias by hand and preserve its anchor and other references"
-			case len(anchors) != 0:
-				fix = "review this anchored input by hand and preserve the shared definition and its aliases"
+				if source.collection != nil {
+					line = source.collection.Line
+				}
+				fix = "hand edit this value alias and preserve its anchor and every use"
+			case source.collection != nil:
+				line = source.collection.Line
+				fix = "detach this step's mapping and preserve the shared definition"
+				if source.collection.Alias != action.inputs.node {
+					fix = "expand the enclosing alias, then " + fix
+				}
+				if sharedDefault {
+					fix += ". Omit this input from the detached mapping"
+				} else {
+					fix += ". Review the detached mapping by hand"
+				}
+			case !sharedDefault:
+				fix = "review this shared definition by hand"
+			case len(source.anchors) != 0:
+				fix = "hand edit this input and preserve the referenced anchors"
 			default:
 				for _, node := range []*yaml.Node{key, value} {
 					if node.Anchor != "" {
@@ -118,40 +166,23 @@ func checkInputs(path, ref string, inputs yamlSource, mappingUsers []string) []e
 					}
 				}
 			}
-			for _, anchor := range anchors {
-				reference := fmt.Sprintf("&%s (%s:%d)", anchor.Anchor, path, anchor.Line)
-				for _, alias := range inputs.aliases[anchor] {
-					reference += fmt.Sprintf(", alias %s:%d", path, alias.Line)
+			if !sharedDefault {
+				fix += ". Actions using this mapping: " + strings.Join(otherRefs, ", ")
+			}
+			seenAnchors := make(map[*yaml.Node]bool)
+			for _, anchor := range source.anchors {
+				if !seenAnchors[anchor] {
+					fix += fmt.Sprintf(". Anchor &%s defined at %s:%d", anchor.Anchor, path, anchor.Line)
+					for _, alias := range source.aliases[anchor] {
+						fix += fmt.Sprintf(", alias %s:%d", path, alias.Line)
+					}
+					seenAnchors[anchor] = true
 				}
-				references = append(references, reference)
-			}
-			if len(references) != 0 {
-				fix += ". Shared definitions: " + strings.Join(references, " | ")
-			}
-			if len(mappingUsers) > 1 {
-				fix += ". Actions using this mapping: " + strings.Join(mappingUsers, ", ")
 			}
 			findings = append(findings, fmt.Errorf(
-				"%s:%d: R35 %s %s: %s (documented default %q at %s)", path, line, ref, name, fix, input.value, action.commit,
+				"%s:%d: R35 %s %s: %s (documented default %q at %s)", path, line, action.ref, name, fix, input.value, action.metadata.revision,
 			))
 		}
 	}
 	return findings
-}
-
-func matchesDefault(node *yaml.Node, want string) bool {
-	node = resolveAlias(node)
-	if node.Kind != yaml.ScalarNode {
-		return false
-	}
-	value := node.Value
-	switch node.ShortTag() {
-	case "!!null":
-		value = ""
-	case "!!bool":
-		value = strings.ToLower(value)
-	case "!!int", "!!float":
-		value = runnerNumber(value)
-	}
-	return !strings.Contains(value, "${{") && value == want
 }

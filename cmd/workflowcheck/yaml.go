@@ -13,17 +13,20 @@ import (
 )
 
 type yamlSource struct {
-	node    *yaml.Node
-	aliases map[*yaml.Node][]*yaml.Node
-	anchors []*yaml.Node
-	alias   *yaml.Node
+	node       *yaml.Node
+	origin     *yaml.Node
+	aliases    map[*yaml.Node][]*yaml.Node
+	anchors    []*yaml.Node
+	collection *yaml.Node
 }
 
 func (source yamlSource) child(node *yaml.Node) yamlSource {
-	if node.Kind == yaml.AliasNode && source.alias == nil {
-		source.alias = node
-	}
 	source.node = resolveAlias(node)
+	source.origin = node
+	if node.Kind == yaml.AliasNode && source.collection == nil &&
+		(source.node.Kind == yaml.MappingNode || source.node.Kind == yaml.SequenceNode) {
+		source.collection = node
+	}
 	if len(source.aliases[source.node]) != 0 {
 		source.anchors = slices.Concat(source.anchors, []*yaml.Node{source.node})
 	}
@@ -33,7 +36,7 @@ func (source yamlSource) child(node *yaml.Node) yamlSource {
 func (source yamlSource) field(name string) yamlSource {
 	for key, child := range mappingPairs(source.node) {
 		if strings.EqualFold(resolveAlias(key).Value, name) {
-			return source.child(child)
+			return source.child(key).child(child)
 		}
 	}
 	return yamlSource{}
@@ -52,7 +55,7 @@ func mappingPairs(node *yaml.Node) iter.Seq2[*yaml.Node, *yaml.Node] {
 }
 
 func resolveAlias(node *yaml.Node) *yaml.Node {
-	if node.Kind == yaml.AliasNode {
+	if node != nil && node.Kind == yaml.AliasNode {
 		return node.Alias
 	}
 	return node
@@ -67,49 +70,90 @@ func referencedAnchors(document *yaml.Node) map[*yaml.Node][]*yaml.Node {
 		if node.Kind == yaml.AliasNode {
 			anchors[node.Alias] = append(anchors[node.Alias], node)
 		}
-		stack = append(stack, node.Content...)
+		for i := len(node.Content) - 1; i >= 0; i-- {
+			stack = append(stack, node.Content[i])
+		}
 	}
 	return anchors
 }
 
-var decimalNumber = regexp.MustCompile(`^[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?$`)
+var (
+	decimalInteger = regexp.MustCompile(`^[-+]?[0-9]+$`)
+	decimalNumber  = regexp.MustCompile(`^[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?$`)
+	hexInteger     = regexp.MustCompile(`^0x[0-9a-fA-F]+$`)
+	octalInteger   = regexp.MustCompile(`^0o[0-7]+$`)
+)
 
-func runnerNumber(value string) string {
-	var number float64
+func runnerScalar(node *yaml.Node) (string, bool) {
+	node = resolveAlias(node)
+	if node == nil || node.Kind != yaml.ScalarNode {
+		return "", false
+	}
+	value, tag := node.Value, node.ShortTag()
+	style := node.Style &^ yaml.TaggedStyle
+	if tag == "!!str" && (node.Style&yaml.TaggedStyle != 0 || style != 0) {
+		return value, true
+	}
+	if style != 0 {
+		return "", false
+	}
+	explicit := node.Style&yaml.TaggedStyle != 0
+	switch value {
+	case "", "~", "null", "Null", "NULL":
+		return "", !explicit || tag == "!!null"
+	case "true", "True", "TRUE", "false", "False", "FALSE":
+		return strings.ToLower(value), !explicit || tag == "!!bool"
+	}
 	switch {
-	case strings.HasPrefix(value, "0x"), strings.HasPrefix(value, "0o"):
+	case tag == "!!int" && !explicit, tag == "!!float" && !explicit,
+		!explicit && decimalNumber.MatchString(value),
+		explicit && tag == "!!int" && (decimalInteger.MatchString(value) || hexInteger.MatchString(value) || octalInteger.MatchString(value)),
+		explicit && tag == "!!float" && !hexInteger.MatchString(value) && !octalInteger.MatchString(value):
+		return runnerNumber(value)
+	case !explicit:
+		return value, true
+	}
+	return "", false
+}
+
+func runnerNumber(value string) (string, bool) {
+	switch {
+	case hexInteger.MatchString(value), octalInteger.MatchString(value):
 		base := 16
 		if value[1] == 'o' {
 			base = 8
 		}
 		integer, err := strconv.ParseUint(value[2:], base, 32)
 		if err != nil {
-			return value
+			return "", false
 		}
-		number = float64(int32(integer))
+		return formatRunnerNumber(float64(int32(integer))), true
 	case decimalNumber.MatchString(value):
-		parsed, err := strconv.ParseFloat(value, 64)
+		number, err := strconv.ParseFloat(value, 64)
 		if err != nil && !errors.Is(err, strconv.ErrRange) {
-			return value
+			return "", false
 		}
-		number = parsed
-	default:
-		switch strings.ToLower(value) {
-		case ".inf", "+.inf":
-			return "Infinity"
-		case "-.inf":
-			return "-Infinity"
-		case ".nan":
-			return "NaN"
-		}
-		return value
+		return formatRunnerNumber(number), true
 	}
-	if math.IsInf(number, 1) {
+	switch value {
+	case ".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF":
+		return "Infinity", true
+	case "-.inf", "-.Inf", "-.INF":
+		return "-Infinity", true
+	case ".nan", ".NaN", ".NAN":
+		return "NaN", true
+	}
+	return "", false
+}
+
+// GitHub's NumberToken formats doubles with invariant G15.
+func formatRunnerNumber(number float64) string {
+	switch {
+	case math.IsInf(number, 1):
 		return "Infinity"
-	}
-	if math.IsInf(number, -1) {
+	case math.IsInf(number, -1):
 		return "-Infinity"
+	default:
+		return strconv.FormatFloat(number, 'G', 15, 64)
 	}
-	// GitHub's NumberToken formats doubles with invariant G15.
-	return strconv.FormatFloat(number, 'G', 15, 64)
 }
