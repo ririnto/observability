@@ -34,5 +34,4 @@ tasks:
       - go tool jsonnetfmt --test mixins/*.jsonnet mixins/*.libsonnet
   check:workflow-input-defaults:
     cmds:
-      - go run ./cmd/workflowcheck .github/workflows
-      - go test ./cmd/workflowcheck
+      - bash tests/check-workflow-input-defaults.sh

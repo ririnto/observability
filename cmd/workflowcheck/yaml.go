@@ -5,6 +5,7 @@ import (
 	"iter"
 	"math"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -12,19 +13,19 @@ import (
 )
 
 type yamlSource struct {
-	node      *yaml.Node
-	aliases   map[*yaml.Node]bool
-	anchor    *yaml.Node
-	aliasLine int
+	node    *yaml.Node
+	aliases map[*yaml.Node][]*yaml.Node
+	anchors []*yaml.Node
+	alias   *yaml.Node
 }
 
 func (source yamlSource) child(node *yaml.Node) yamlSource {
-	if node.Kind == yaml.AliasNode && source.aliasLine == 0 {
-		source.aliasLine = node.Line
+	if node.Kind == yaml.AliasNode && source.alias == nil {
+		source.alias = node
 	}
 	source.node = resolveAlias(node)
-	if source.aliases[source.node] {
-		source.anchor = source.node
+	if len(source.aliases[source.node]) != 0 {
+		source.anchors = slices.Concat(source.anchors, []*yaml.Node{source.node})
 	}
 	return source
 }
@@ -57,14 +58,14 @@ func resolveAlias(node *yaml.Node) *yaml.Node {
 	return node
 }
 
-func referencedAnchors(document *yaml.Node) map[*yaml.Node]bool {
-	anchors := make(map[*yaml.Node]bool)
+func referencedAnchors(document *yaml.Node) map[*yaml.Node][]*yaml.Node {
+	anchors := make(map[*yaml.Node][]*yaml.Node)
 	stack := []*yaml.Node{document}
 	for len(stack) > 0 {
 		node := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 		if node.Kind == yaml.AliasNode {
-			anchors[node.Alias] = true
+			anchors[node.Alias] = append(anchors[node.Alias], node)
 		}
 		stack = append(stack, node.Content...)
 	}
