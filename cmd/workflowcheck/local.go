@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -14,23 +16,22 @@ type workflowRevision struct {
 	head string
 }
 
-func readWorkflowRevision(path string, data []byte) *workflowRevision {
+func readWorkflowRevision(path string) *workflowRevision {
 	directory := filepath.Dir(path)
 	parent := filepath.Dir(directory)
 	if filepath.Base(directory) != "workflows" || filepath.Base(parent) != ".github" {
 		return &workflowRevision{}
 	}
 	root := filepath.Dir(parent)
-	head, err := gitOutput(root, "rev-parse", "--verify", "HEAD^{commit}")
+	output, err := gitOutput(root, "rev-parse", "--show-prefix", "--verify", "HEAD^{commit}")
 	if err != nil {
 		return &workflowRevision{}
 	}
-	revision := &workflowRevision{root: root, head: strings.TrimSpace(string(head))}
-	snapshot, err := revision.blob(".github/workflows/" + filepath.Base(path))
-	if err != nil || !bytes.Equal(snapshot, data) {
+	prefix, head, ok := strings.Cut(string(output), "\n")
+	if !ok || prefix != "" {
 		return &workflowRevision{}
 	}
-	return revision
+	return &workflowRevision{root: root, head: strings.TrimSpace(head)}
 }
 
 func gitOutput(root string, args ...string) ([]byte, error) {
@@ -72,26 +73,49 @@ func (revision *workflowRevision) localMetadata(ref string) (actionMetadata, str
 	if revision.head == "" {
 		return actionMetadata{}, "the workflow revision is unavailable"
 	}
-	for _, name := range []string{"action.yml", "action.yaml"} {
-		path := filepath.Join(ref, name)
-		if filepath.IsLocal(path) {
-			data, err := revision.blob(filepath.ToSlash(path))
-			if err == nil {
-				var document yaml.Node
-				if yaml.Unmarshal(data, &document) != nil || len(document.Content) == 0 || document.Content[0].Kind != yaml.MappingNode {
-					return actionMetadata{}, "local action metadata is unreadable"
-				}
-				inputs := make(map[string]inputDefault)
-				root := yamlSource{node: document.Content[0]}
-				for key, input := range mappingPairs(root.field("inputs").node) {
-					node := yamlSource{node: resolveAlias(input)}.field("default").node
-					if value, ok := runnerScalar(node); ok && !strings.Contains(value, "${{") {
-						inputs[resolveAlias(key).Value] = inputDefault{kind: literalDefault, value: value}
-					}
-				}
-				return actionMetadata{revision: revision.head + ":" + filepath.ToSlash(path), inputs: inputs}, ""
+	if !filepath.IsLocal(ref) {
+		return actionMetadata{}, "local action metadata is unavailable"
+	}
+	yml := filepath.ToSlash(filepath.Join(ref, "action.yml"))
+	yamlPath := filepath.ToSlash(filepath.Join(ref, "action.yaml"))
+	if _, err := gitOutput(revision.root, "diff", "--cached", "--quiet", "--no-ext-diff", "--no-textconv", revision.head,
+		"--", ":(literal)"+yml, ":(literal)"+yamlPath); err != nil {
+		return actionMetadata{}, "local action metadata differs from the workflow revision in the index or cannot be verified"
+	}
+
+	var manifest []byte
+	var manifestPath string
+	for _, path := range []string{yml, yamlPath} {
+		pinned, pinnedErr := revision.blob(path)
+		worktreePath := filepath.Join(revision.root, filepath.FromSlash(path))
+		info, worktreeErr := os.Lstat(worktreePath)
+		if pinnedErr == nil || !errors.Is(worktreeErr, os.ErrNotExist) {
+			if pinnedErr != nil || worktreeErr != nil || !info.Mode().IsRegular() {
+				return actionMetadata{}, "local action metadata differs from the workflow revision in the worktree or cannot be verified"
+			}
+			current, err := os.ReadFile(worktreePath)
+			if err != nil || !bytes.Equal(pinned, current) {
+				return actionMetadata{}, "local action metadata differs from the workflow revision in the worktree or cannot be verified"
+			}
+			if manifestPath == "" {
+				manifest, manifestPath = pinned, path
 			}
 		}
 	}
-	return actionMetadata{}, "local action metadata is unavailable"
+	if manifestPath == "" {
+		return actionMetadata{}, "local action metadata is unavailable"
+	}
+	var document yaml.Node
+	if yaml.Unmarshal(manifest, &document) != nil || len(document.Content) == 0 || document.Content[0].Kind != yaml.MappingNode {
+		return actionMetadata{}, "local action metadata is unreadable"
+	}
+	inputs := make(map[string]inputDefault)
+	root := yamlSource{node: document.Content[0]}
+	for key, input := range mappingPairs(root.field("inputs").node) {
+		node := yamlSource{node: resolveAlias(input)}.field("default").node
+		if value, ok := runnerScalar(node); ok && !strings.Contains(value, "${{") {
+			inputs[resolveAlias(key).Value] = inputDefault{kind: literalDefault, value: value}
+		}
+	}
+	return actionMetadata{revision: revision.head + ":" + manifestPath, inputs: inputs}, ""
 }

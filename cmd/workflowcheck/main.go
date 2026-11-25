@@ -82,7 +82,7 @@ func checkWorkflow(path string) error {
 							reason = "an earlier step may replace the workspace"
 						} else {
 							if revision == nil {
-								revision = readWorkflowRevision(path, data)
+								revision = readWorkflowRevision(path)
 							}
 							metadata, reason = revision.localMetadata(ref)
 						}

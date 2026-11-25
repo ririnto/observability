@@ -58,6 +58,12 @@ inputs:
   exact-rounding:
     description: Decimal default
     default: 100000000000001000
+  double-rounding:
+    description: Decimal default
+    default: 100000000000000500
+  distinct-number:
+    description: Decimal default
+    default: 100000000000002
   g15-text:
     description: Formatted number default
     default: '1E+15'
@@ -271,6 +277,51 @@ awk '
 	END { exit !(marked && literal) }
 ' "$directory/metadata"
 
+cat >>"$workflows/controls.yaml" <<'YAML'
+  staged:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/sample
+        with:
+          empty: null
+YAML
+git -C "$directory" add .github/workflows/controls.yaml
+
+if go tool workflowcheck "$workflows" >"$directory/review" 2>"$directory/diagnostics"; then
+	cat "$directory/review" >&2
+	printf '%s\n' 'Expected a redundant input finding in the staged workflow.' >&2
+	exit 1
+else
+	test "$?" -eq 1
+fi
+assert_records /dev/stdin "$directory/diagnostics" <<'EXPECTED'
+controls.yaml 71 ./.github/actions/sample empty omit-input
+EXPECTED
+assert_records /dev/stdin "$directory/review" <<'EXPECTED'
+controls.yaml 35 ./.github/actions/sample
+controls.yaml 42 ./.github/actions/sample
+controls.yaml 48 ./.github/actions/missing
+EXPECTED
+
+assert_staged_workflow_left_to_review() {
+	go tool workflowcheck "$workflows" >"$directory/review" 2>"$directory/diagnostics"
+	test ! -s "$directory/diagnostics"
+	assert_records /dev/stdin "$directory/review" <<'EXPECTED'
+controls.yaml 35 ./.github/actions/sample
+controls.yaml 42 ./.github/actions/sample
+controls.yaml 48 ./.github/actions/missing
+controls.yaml 55 ./.github/actions/sample
+controls.yaml 69 ./.github/actions/sample
+EXPECTED
+}
+
+printf 'name: Working copy only\n' >"$directory/.github/actions/sample/action.yaml"
+assert_staged_workflow_left_to_review
+git -C "$directory" add .github/actions/sample/action.yaml
+git -C "$directory" restore --source=HEAD --worktree -- .github/actions/sample/action.yaml
+assert_staged_workflow_left_to_review
+git -C "$directory" restore --staged --worktree -- .github/actions/sample/action.yaml .github/workflows/controls.yaml
+
 cat >"$workflows/findings.yaml" <<'YAML'
 name: Findings
 on: push
@@ -474,24 +525,27 @@ jobs:
           integer-midpoint: 1000000000000000
           exact-rounding: 100000000000000501
           g15-text: 1000000000000001
+          double-rounding: 100000000000000501
+          distinct-number: 100000000000003
 YAML
 git -C "$directory" add .github
 tree="$(git -C "$directory" write-tree)"
 commit="$(git -C "$directory" -c user.name=Fixture -c user.email=fixture@example.invalid commit-tree "$tree" -m 'Record default-equal inputs')"
 git -C "$directory" update-ref HEAD "$commit"
-printf 'name: Working copy only\n' >"$directory/.github/actions/sample/action.yaml"
 
-if go tool workflowcheck "$workflows" >"$directory/review" 2>"$directory/diagnostics"; then
-	printf '%s\n' 'Expected workflowcheck to reject redundant defaults.' >&2
-	exit 1
-else
-	if [ "$?" -ne 1 ]; then
-		cat "$directory/diagnostics" >&2
+assert_redundant_defaults() {
+	if go tool workflowcheck "$workflows" >"$directory/review" 2>"$directory/diagnostics"; then
+		printf '%s\n' 'Expected workflowcheck to reject redundant defaults.' >&2
 		exit 1
+	else
+		if [ "$?" -ne 1 ]; then
+			cat "$directory/diagnostics" >&2
+			exit 1
+		fi
 	fi
-fi
+}
 
-if ! assert_records /dev/stdin "$directory/diagnostics" <<'EXPECTED'
+cat >"$directory/expected-findings" <<'EXPECTED'
 findings.yaml 13 actions/setup-go@v6 cache hand-edit default-cache 16 23
 findings.yaml 17 pnpm/action-setup@v4 dest shared-definition
 findings.yaml 18 pnpm/action-setup@v4 run_install shared-definition
@@ -524,8 +578,8 @@ local.yaml 21 ./.github/actions/sample negative-octal omit-input
 local.yaml 22 ./.github/actions/sample rounded omit-input
 local.yaml 23 ./.github/actions/sample adjacent omit-input
 local.yaml 24 ./.github/actions/sample integer-midpoint omit-input
-local.yaml 25 ./.github/actions/sample exact-rounding omit-input
 local.yaml 26 ./.github/actions/sample g15-text omit-input
+local.yaml 27 ./.github/actions/sample double-rounding omit-input
 jobs-alias.yaml 13 actions/checkout@v6 filter detach-and-omit job-map
 jobs-alias.yaml 13 actions/checkout@v6 fetch-depth detach-and-omit job-map depth
 nested.yaml 14 actions/checkout@v6 filter shared-definition inputs actions/setup-go@v6
@@ -552,7 +606,18 @@ sequence.yaml 23 actions/checkout@v6 fetch-depth detach-and-omit step reused-ste
 sequence.yaml 24 actions/checkout@v6 filter detach-and-omit job steps step
 sequence.yaml 24 actions/checkout@v6 fetch-depth detach-and-omit job steps step depth
 EXPECTED
-then
-	cat "$directory/diagnostics" >&2
-	exit 1
-fi
+
+assert_redundant_defaults
+assert_records "$directory/expected-findings" "$directory/diagnostics"
+
+printf 'name: Working copy only\n' >"$directory/.github/actions/sample/action.yaml"
+assert_redundant_defaults
+awk '$1 != "local.yaml"' "$directory/expected-findings" >"$directory/expected-external"
+assert_records "$directory/expected-external" "$directory/diagnostics"
+assert_records /dev/stdin "$directory/review" <<'EXPECTED'
+controls.yaml 35 ./.github/actions/sample
+controls.yaml 42 ./.github/actions/sample
+controls.yaml 48 ./.github/actions/missing
+controls.yaml 55 ./.github/actions/sample
+local.yaml 8 ./.github/actions/sample
+EXPECTED
