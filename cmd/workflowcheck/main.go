@@ -75,7 +75,7 @@ func checkWorkflow(path string) error {
 			for i := 0; i < len(inputs.Content); i += 2 {
 				key, value := inputs.Content[i], inputs.Content[i+1]
 				input, ok := action.inputs[strings.ToLower(key.Value)]
-				if ok && !input.contextDependent && matchesDefault(value, input.value) {
+				if ok && input.kind == literalDefault && matchesDefault(value, input.value) {
 					findings = append(findings, fmt.Errorf(
 						"%s:%d: R35: omit %q for %s: it equals the documented default %q at %s",
 						path, key.Line, key.Value, step.Uses, input.value, action.commit,

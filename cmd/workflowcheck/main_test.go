@@ -26,8 +26,11 @@ jobs:
           cache: ${{ true }}
       - uses: actions/setup-node@v6
         with:
-          cache: pnpm
+          cache: ""
           package-manager-cache: true
+      - uses: actions/checkout@v6
+        with:
+          ssh-key: ""
       - uses: actions/setup-go@v5
         with:
           cache: true
@@ -47,6 +50,9 @@ jobs:
           path: build-cache
           key: test-cache
           lookup-only: "false"
+      - uses: actions/checkout@v6
+        with:
+          filter: ""
 `
 	if err := os.WriteFile(path, []byte(controls+defect), 0o600); err != nil {
 		t.Fatal(err)
@@ -56,11 +62,12 @@ jobs:
 		t.Fatal("redundant defaults should fail")
 	}
 	diagnostics := strings.Split(err.Error(), "\n")
-	if len(diagnostics) != 2 {
-		t.Fatalf("want two R35 diagnostics, got %v", diagnostics)
+	if len(diagnostics) != 3 {
+		t.Fatalf("want three R35 diagnostics, got %v", diagnostics)
 	}
 	if !strings.Contains(diagnostics[0], `R35: omit "cache" for actions/setup-go@v6`) ||
-		!strings.Contains(diagnostics[1], `R35: omit "lookup-only" for actions/cache@v5`) {
+		!strings.Contains(diagnostics[1], `R35: omit "lookup-only" for actions/cache@v5`) ||
+		!strings.Contains(diagnostics[2], `R35: omit "filter" for actions/checkout@v6`) {
 		t.Fatalf("unexpected diagnostics: %v", diagnostics)
 	}
 }
