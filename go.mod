@@ -10,6 +10,7 @@ tool (
 	github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb
 	github.com/prometheus/alertmanager/cmd/amtool
 	github.com/prometheus/prometheus/cmd/promtool
+	github.com/ririnto/observability/cmd/workflowcheck
 	mvdan.cc/sh/v3/cmd/shfmt
 )
 
