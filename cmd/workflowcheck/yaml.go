@@ -4,6 +4,7 @@ import (
 	"errors"
 	"iter"
 	"math"
+	"math/big"
 	"regexp"
 	"slices"
 	"strconv"
@@ -115,18 +116,25 @@ func runnerScalar(node *yaml.Node) (string, bool) {
 }
 
 func runnerNumberOrString(value, tag string) (string, bool) {
-	switch {
-	case tag != "!!float" && (hexInteger.MatchString(value) || octalInteger.MatchString(value)):
-		base := 16
-		if value[1] == 'o' {
-			base = 8
+	digits, base := value, 0
+	if tag != "!!float" {
+		switch {
+		case decimalInteger.MatchString(value):
+			base = 10
+		case hexInteger.MatchString(value):
+			digits, base = value[2:], 16
+		case octalInteger.MatchString(value):
+			digits, base = value[2:], 8
 		}
-		integer, err := strconv.ParseUint(value[2:], base, 32)
-		if err != nil {
+	}
+	if base != 0 {
+		integer, ok := new(big.Int).SetString(digits, base)
+		if !ok {
 			return "", false
 		}
-		return formatRunnerNumber(float64(int32(integer))), true
-	case tag == "!!int" && decimalInteger.MatchString(value), tag != "!!int" && decimalNumber.MatchString(value):
+		return integer.String(), true
+	}
+	if tag != "!!int" && decimalNumber.MatchString(value) {
 		number, err := strconv.ParseFloat(value, 64)
 		if err != nil && !errors.Is(err, strconv.ErrRange) {
 			return "", false

@@ -26,8 +26,20 @@ inputs:
     description: String default
     default: '0b1'
   wide:
-    description: Out-of-range hexadecimal string
-    default: '0x100000000'
+    description: Hexadecimal default
+    default: 0x100000000
+  high-bit:
+    description: Positive decimal default
+    default: 2147483648
+  octal:
+    description: Octal default
+    default: 0o40000000000
+  negative:
+    description: Negative decimal default
+    default: -2147483648
+  beyond-uint64:
+    description: Decimal default above the unsigned 64-bit range
+    default: 18446744073709551617
   missing:
     description: Omitted default
 runs:
@@ -60,7 +72,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           cache: ''
-          package-manager-cache: true
+          package-manager-cache: false
       - uses: actions/checkout@v6
         with:
           ssh-key: ''
@@ -104,7 +116,9 @@ jobs:
           number: '100000000000002.0'
           plain-text: '0b2'
           text: '0b2'
-          wide: 0x100000000
+          wide: '0x100000000'
+          negative: 0x80000000
+          beyond-uint64: 18446744073709551616
           missing: ''
 YAML
 
@@ -116,6 +130,18 @@ git -C "$directory" update-ref HEAD "$commit"
 
 assert_records() {
 	awk '
+		function assign(record_number,   candidate) {
+			for (candidate in expected) {
+				if ((record_number, candidate) in compatible && visited[candidate] != NR) {
+					visited[candidate] = NR
+					if (!(candidate in assigned) || assign(assigned[candidate])) {
+						assigned[candidate] = record_number
+						return 1
+					}
+				}
+			}
+			return 0
+		}
 		FILENAME == ARGV[1] {
 			expected[NR] = $0
 			next
@@ -125,21 +151,24 @@ assert_records() {
 			gsub(/[^[:alnum:]_.\/@-]+/, " ")
 			file = $1
 			sub(/^.*\//, "", file)
-			found = 0
 			if ($2 ~ /^[0-9]+$/) {
 				advice = ""
 				for (k = 3; k <= NF; k++) {
 					token = $k
 					sub(/\.+$/, "", token)
-					if (token ~ /^(omit-input|detach-and-omit|hand-edit|shared-definition)$/) {
-						advice = token
+					if (advice == "") {
+						if (token ~ /^(omit-input|detach-and-omit|hand-edit|shared-definition)$/) {
+							advice = token
+						} else {
+							identity[token] = NR
+						}
 					}
 					tokens[token] = NR
 				}
 				for (i in expected) {
 					fields = split(expected[i], want)
-					if (file == want[1] && $2 + 0 == want[2] + 0 && tokens[want[3]] == NR &&
-						(fields == 3 || tokens[want[4]] == NR) && (fields < 5 || advice == want[5])) {
+					if (file == want[1] && $2 + 0 == want[2] + 0 && identity[want[3]] == NR &&
+						(fields == 3 || identity[want[4]] == NR) && (fields < 5 || advice == want[5])) {
 						matched = 1
 						for (j = 6; j <= fields; j++) {
 							if (tokens[want[j]] != NR) {
@@ -147,20 +176,19 @@ assert_records() {
 							}
 						}
 						if (matched) {
-							seen[i] = 1
-							found = 1
+							compatible[NR, i] = 1
 						}
 					}
 				}
 			}
-			if (!found) {
+			if (!assign(NR)) {
 				print "Unexpected record: " record
 				failed = 1
 			}
 		}
 		END {
 			for (i in expected) {
-				if (!(i in seen)) {
+				if (!(i in assigned)) {
 					print "Missing record for " expected[i]
 					failed = 1
 				}
@@ -169,6 +197,30 @@ assert_records() {
 		}
 	' "$1" "$2"
 }
+
+cat >"$directory/expected" <<'EXPECTED'
+scratch.yaml 10 actions/setup-go@v6 cache hand-edit inputs default-cache
+scratch.yaml 10 actions/setup-go@v6 cache hand-edit default-cache
+EXPECTED
+cat >"$directory/complete" <<'DIAGNOSTICS'
+scratch.yaml:10: R35 actions/setup-go@v6 cache [hand-edit]: preserve inputs and default-cache
+scratch.yaml:10: R35 actions/setup-go@v6 cache [hand-edit]: preserve default-cache
+DIAGNOSTICS
+assert_records "$directory/expected" "$directory/complete"
+awk 'NR == 1 { first = $0 } NR == 2 { print; print first }' "$directory/complete" >"$directory/reversed"
+assert_records "$directory/expected" "$directory/reversed"
+head -n 1 "$directory/complete" >"$directory/incomplete"
+if assert_records "$directory/expected" "$directory/incomplete" >"$directory/matcher-failure"; then
+	printf '%s\n' 'Expected the diagnostic matcher to reject a missing record.' >&2
+	exit 1
+else
+	matcher_status=$?
+	if [ "$matcher_status" -ne 1 ]; then
+		cat "$directory/matcher-failure" >&2
+		exit 1
+	fi
+	printf 'Diagnostic matcher rejected scratch output with one record removed (exit %s).\n' "$matcher_status"
+fi
 
 go tool workflowcheck "$workflows" >"$directory/review"
 assert_records /dev/stdin "$directory/review" <<'EXPECTED'
@@ -181,15 +233,21 @@ go tool workflowcheck --list-metadata >"$directory/metadata"
 awk '
 	{
 		gsub(/[^[:alnum:]_.\/@-]+/, " ")
-		marked = ref = input = 0
 		for (i = 1; i <= NF; i++) {
-			if ($i == "actions/setup-node@v6") ref = 1
-			if ($i == "package-manager-cache") input = 1
-			if ($i == "context-dependent") marked = 1
+			token = $i
+			sub(/\.+$/, "", token)
+			tokens[token] = NR
 		}
-		if (ref && input && marked) found = 1
+		if (tokens["actions/setup-node@v6"] == NR) {
+			if (tokens["architecture"] == NR && tokens["context-dependent"] == NR) {
+				marked = 1
+			}
+			if (tokens["package-manager-cache"] == NR && tokens["literal"] == NR && tokens["true"] == NR) {
+				literal = 1
+			}
+		}
 	}
-	END { exit !found }
+	END { exit !(marked && literal) }
 ' "$directory/metadata"
 
 cat >"$workflows/findings.yaml" <<'YAML'
@@ -201,7 +259,7 @@ env:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    steps: &steps
+    steps:
       - &step
         uses: actions/setup-go@v6
         with:
@@ -246,15 +304,30 @@ jobs:
           path: build-cache
           key: test-cache
           lookup-only: 'false'
-  alias:
-    runs-on: ubuntu-latest
-    steps: *steps
+      - uses: actions/setup-node@v6
+        with:
+          package-manager-cache: true
   unused:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: &unused 1
+YAML
+
+cat >"$workflows/sequence.yaml" <<'YAML'
+name: Steps alias
+on: push
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps: &steps
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+  alias:
+    runs-on: ubuntu-latest
+    steps: *steps
 YAML
 
 cat >"$workflows/local.yaml" <<'YAML'
@@ -272,6 +345,11 @@ jobs:
           number: 100000000000001.5
           plain-text: '0b1'
           text: 0b1
+          wide: 4294967296
+          high-bit: 0x80000000
+          octal: 4294967296
+          negative: -02147483648
+          beyond-uint64: 0x10000000000000001
 YAML
 git -C "$directory" add .github
 tree="$(git -C "$directory" write-tree)"
@@ -300,27 +378,25 @@ findings.yaml 30 actions/setup-go@v6 cache detach-and-omit pnpm/action-setup@v4 
 findings.yaml 33 actions/setup-go@v6 cache hand-edit second-inputs
 findings.yaml 37 actions/setup-go@v6 cache detach-and-omit second-inputs uses-key with-key
 findings.yaml 38 actions/setup-go@v6 cache detach-and-omit step
-findings.yaml 41 actions/checkout@v6 filter hand-edit
-findings.yaml 42 actions/checkout@v6 fetch-depth hand-edit
-findings.yaml 45 actions/checkout@v6 fetch-depth hand-edit
-findings.yaml 48 actions/checkout@v6 fetch-depth hand-edit
-findings.yaml 53 actions/cache@v5 lookup-only hand-edit
-findings.yaml 56 actions/setup-go@v6 cache detach-and-omit step
-findings.yaml 56 actions/setup-go@v6 cache detach-and-omit first-inputs pnpm/action-setup@v4
-findings.yaml 56 actions/setup-go@v6 cache detach-and-omit second-inputs
-findings.yaml 56 actions/setup-go@v6 cache hand-edit value-alias-inputs default-cache
-findings.yaml 56 actions/setup-go@v6 cache hand-edit default-cache
-findings.yaml 56 pnpm/action-setup@v4 dest detach-and-omit
-findings.yaml 56 pnpm/action-setup@v4 run_install detach-and-omit
-findings.yaml 56 actions/checkout@v6 filter detach-and-omit
-findings.yaml 56 actions/checkout@v6 fetch-depth detach-and-omit
-findings.yaml 56 actions/cache@v5 lookup-only detach-and-omit
+findings.yaml 41 actions/checkout@v6 filter omit-input
+findings.yaml 42 actions/checkout@v6 fetch-depth omit-input
+findings.yaml 45 actions/checkout@v6 fetch-depth omit-input
+findings.yaml 48 actions/checkout@v6 fetch-depth omit-input
+findings.yaml 53 actions/cache@v5 lookup-only omit-input
+findings.yaml 56 actions/setup-node@v6 package-manager-cache omit-input
 findings.yaml 62 actions/checkout@v6 fetch-depth omit-input unused
 local.yaml 10 ./.github/actions/sample empty omit-input
 local.yaml 11 ./.github/actions/sample midpoint omit-input
 local.yaml 12 ./.github/actions/sample number omit-input
 local.yaml 13 ./.github/actions/sample plain-text omit-input
 local.yaml 14 ./.github/actions/sample text omit-input
+local.yaml 15 ./.github/actions/sample wide omit-input
+local.yaml 16 ./.github/actions/sample high-bit omit-input
+local.yaml 17 ./.github/actions/sample octal omit-input
+local.yaml 18 ./.github/actions/sample negative omit-input
+local.yaml 19 ./.github/actions/sample beyond-uint64 omit-input
+sequence.yaml 9 actions/checkout@v6 fetch-depth hand-edit steps
+sequence.yaml 12 actions/checkout@v6 fetch-depth detach-and-omit steps
 EXPECTED
 then
 	cat "$directory/diagnostics" >&2

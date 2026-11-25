@@ -112,7 +112,7 @@ var actionDefaults = map[string]actionMetadata{
 			"scope":                 {kind: contextDependentDefault, condition: "Uses the repository owner as the scope for the GitHub Packages registry."},
 			"token":                 {kind: contextDependentDefault, condition: "Uses the workflow GitHub token on github.com and an empty string on GitHub Enterprise Server."},
 			"cache":                 {kind: noDefault},
-			"package-manager-cache": {kind: contextDependentDefault, condition: "Enables automatic npm caching when package.json declares npm and no cache input is supplied."},
+			"package-manager-cache": fixed("true"),
 			"cache-dependency-path": {kind: contextDependentDefault, condition: "Uses the lockfile for the selected package manager in the workspace when no path is supplied."},
 			"mirror":                {kind: noDefault},
 			"mirror-token":          {kind: noDefault},
