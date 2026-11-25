@@ -15,6 +15,7 @@
     "check:shfmt": "go tool task check:shell",
     "check:typescript": "tsc --noEmit",
     "check:ultracite": "ultracite check",
+    "check:workflow-input-defaults": "go tool task check:workflow-input-defaults",
     "fix": "run-p fix:*",
     "fix:jsonnetfmt": "go tool jsonnetfmt -i mixins/*.jsonnet mixins/*.libsonnet",
     "fix:markdownlint-cli2": "markdownlint-cli2 --fix",
