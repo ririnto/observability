@@ -85,6 +85,14 @@ Manage service discovery coverage separately.
 
 The upstream warning and critical variants can fire together. Use the `severity` label to route them in either evaluator.
 
+### NodeTextfile statechart
+
+The `NodeTextfile` model shows how the Node Exporter textfile collector error alert moves between inactive, pending, and firing.
+
+![NodeTextfile statechart](.claude/skills/formal-verification/assets/node-textfile/statechart.svg)
+
+Run `pnpm render:statecharts` to regenerate the SVG.
+
 ## Monitor Istio
 
 1. Scrape Istiod and the Envoy proxies, including gateways, at least once a minute.

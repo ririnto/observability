@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-state" viewBox="0 0 498 395" width="498" height="395" style="max-width:100%;height:auto;--_bg:var(--pele-bg,#fff);--_fg:var(--pele-fg,#1f1f1f);--_m:var(--pele-muted,#6e6e6e);--_l:var(--pele-line,#1f1f1f);--_s:var(--pele-surface,#f3f3f3);--_a:var(--pele-surface-alt,#e6e6e6);--_b:var(--pele-border,#8a8a8a);--_c:var(--pele-accent,#5b7bd5);color:var(--_fg);--_tw:var(--pele-title-weight,bold);--_fm:var(--pele-font-mono,monospace);font:16px sans-serif;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;font-family:var(--pele-font,sans-serif)" fill="var(--_fg)" role="graphics-document document" aria-roledescription="state">
+<style>
+.pele {
+  --pele-bg: #ffffff;
+  --pele-fg: #1c1c1c;
+  --pele-muted: #656565;
+  --pele-line: #808080;
+  --pele-surface: #fcfcfc;
+  --pele-surface-alt: #f1f1f1;
+  --pele-border: #c9c9c9;
+}
+.pele .blue rect { fill: #c3e0ff; }
+.pele .orange rect { fill: #f0d3bf; }
+.pele .purple rect { fill: #e3d5ff; }
+.pele .yellow rect { fill: #f0dcbf; }
+.pele .teal rect { fill: #bfe3df; }
+.pele .tan rect { fill: #e5d9ce; }
+.pele .pink rect { fill: #ffcbe6; }
+.pele .breaks rect {
+  fill: #ffecee !important;
+  stroke: #e72e3b !important;
+  stroke-width: 2.5px !important;
+}
+.pele .breaks text {
+  fill: #cd2834 !important;
+}
+.pele .mayBreak rect {
+  fill: #fff3e6 !important;
+  stroke: #e8730c !important;
+  stroke-width: 2.5px !important;
+}
+.pele .mayBreak text {
+  fill: #b85a06 !important;
+}
+.pele .bugPath rect {
+  stroke: #1680f3 !important;
+  stroke-width: 2.5px !important;
+}
+.pele .repeats rect {
+  stroke: #9b35d6 !important;
+  stroke-width: 2.5px !important;
+  stroke-dasharray: 6 3;
+}
+@media (prefers-color-scheme: dark) {
+  .pele {
+    --pele-bg: #1f1f1f;
+    --pele-fg: #f5f5f5;
+    --pele-muted: #acacac;
+    --pele-line: #939393;
+    --pele-surface: #121212;
+    --pele-surface-alt: #2c2c2c;
+    --pele-border: #4e4e4e;
+  }
+  .pele .blue rect { fill: #1b3857; }
+  .pele .orange rect { fill: #573117; }
+  .pele .purple rect { fill: #3c2e57; }
+  .pele .yellow rect { fill: #573d17; }
+  .pele .teal rect { fill: #174641; }
+  .pele .tan rect { fill: #3d3127; }
+  .pele .pink rect { fill: #57233e; }
+  .pele .breaks rect {
+    fill: #2e2021 !important;
+    stroke: #cf2b35 !important;
+  }
+  .pele .breaks text {
+    fill: #ff6463 !important;
+  }
+  .pele .mayBreak rect {
+    fill: #2e2619 !important;
+    stroke: #d0700f !important;
+  }
+  .pele .mayBreak text {
+    fill: #ffa257 !important;
+  }
+  .pele .bugPath rect {
+    stroke: #116dd2 !important;
+  }
+  .pele .repeats rect {
+    stroke: #9a3fcf !important;
+  }
+}
+</style>
+<text class="pele-title" font-weight="var(--_tw)" text-anchor="middle" xml:space="preserve"><tspan x="249" y="25.6">Node Exporter textfile alert</tspan></text><g transform="translate(0,36)"><g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round"><g class="pele-edge pele-transition" data-id="edge0"><path d="M305.39,22L305.39,59"/><path class="pele-marker" d="M305.39,66L302.03,58L308.75,58Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge1"><path d="M289.39,110L289.39,119.63C289.39,122.94 104.65,128.68 104.65,132L104.65,172C104.65,177.48 197.02,177.77 197.02,183.25L197.02,187"/><path class="pele-marker" d="M197.02,194L193.66,186L200.38,186Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge2"><path d="M213.02,194L213.02,184.38C213.02,178.19 305.39,178.19 305.39,172L305.39,117"/><path class="pele-marker" d="M305.39,110L308.75,118L302.03,118Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge3"><path d="M205.02,238L205.02,281.5C205.02,288.44 277.74,288.44 277.74,295.38L277.74,300"/><path class="pele-marker" d="M277.74,307L274.38,299L281.1,299Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge4"><path d="M293.74,307L293.74,294C293.74,284.63 401.48,284.63 401.48,275.25L401.48,142C401.48,132.5 321.39,132.5 321.39,123L321.39,117"/><path class="pele-marker" d="M321.39,110L324.75,118L318.03,118Z" fill="var(--_l)" stroke="none"/></g></g><g class="pele-edge-labels" font-size="14"><g class="pele-edge-label" data-id="edge1"><rect x="10" y="134" width="189.3" height="36" rx="3" fill="var(--_bg)"/><text text-anchor="middle" xml:space="preserve"><tspan x="104.65" y="147.9">Reachable exporter reports a</tspan><tspan x="104.65" y="165.9">collector error</tspan></text></g><g class="pele-edge-label" data-id="edge2"><rect x="219.3" y="134" width="172.18" height="36" rx="3" fill="var(--_bg)"/><text text-anchor="middle" xml:space="preserve"><tspan x="305.39" y="147.9">Exporter is unreachable or</tspan><tspan x="305.39" y="165.9">collector error clears</tspan></text></g><g class="pele-edge-label" data-id="edge3"><rect x="110" y="258.5" width="190.04" height="21" rx="3" fill="var(--_bg)"/><text x="205.02" y="273.9" text-anchor="middle">Error persists for five minutes</text></g><g class="pele-edge-label" data-id="edge4"><rect x="315.39" y="198" width="172.18" height="36" rx="3" fill="var(--_bg)"/><text text-anchor="middle" xml:space="preserve"><tspan x="401.48" y="211.9">Exporter is unreachable or</tspan><tspan x="401.48" y="229.9">collector error clears</tspan></text></g></g><g class="pele-nodes"><g class="pele-node pele-state" data-id="s0" transform="translate(305.39,88)"><rect x="-43.57" y="-22" width="87.14" height="44" rx="10" fill="var(--_s)" stroke="var(--_b)"/><text class="pele-label" x="0" y="5.6" text-anchor="middle">Inactive</text></g><g class="pele-node pele-state" data-id="s1" transform="translate(205.02,216)"><rect x="-45.35" y="-22" width="90.7" height="44" rx="10" fill="var(--_s)" stroke="var(--_b)"/><text class="pele-label" x="0" y="5.6" text-anchor="middle">Pending</text></g><g class="pele-node pele-state" data-id="s2" transform="translate(285.74,329)"><rect x="-36" y="-22" width="72" height="44" rx="10" fill="var(--_s)" stroke="var(--_b)"/><text class="pele-label" x="0" y="5.6" text-anchor="middle">Firing</text></g><g class="pele-node pele-state-start" data-id="root_start" transform="translate(305.39,15)"><circle r="7" fill="var(--_l)"/></g></g></g></svg>
