@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { basename, dirname, extname, join } from "node:path/posix";
+import { basename, dirname, extname } from "node:path/posix";
 import { argv, stderr } from "node:process";
 
 import { isAlias, isScalar, parseDocument } from "yaml";
@@ -38,9 +38,14 @@ const inSkill = (file: string): boolean => file.startsWith(`${root}/`);
 const models = paths.filter((file) => extname(file) === ".tla");
 const modelDirectories = new Set(models.map((file) => dirname(file)));
 const modelNames = new Set(models.map((file) => basename(file, ".tla")));
+const normalizeName = (name: string): string =>
+  name.toLowerCase().replaceAll(/[-_]/gu, "");
+const normalizedStem = (file: string): string =>
+  normalizeName(basename(file, extname(file)));
+const normalizedModelNames = new Set([...modelNames].map(normalizeName));
 const associatedWithModel = (file: string): boolean =>
   modelDirectories.has(dirname(file)) ||
-  modelNames.has(basename(file, extname(file)));
+  normalizedModelNames.has(normalizedStem(file));
 const chartExtensions = new Set([".mmd", ".mnd"]);
 const frontMatter =
   /^(?:\uFEFF)?---[ \t]*\r?\n(?<fields>[\s\S]*?)(?<=\n)(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/u;
@@ -68,9 +73,14 @@ const formalCharts = new Set(
       return true;
     }
     const title = chartTitle(readSource(file));
-    return title !== undefined && modelNames.has(title);
+    return (
+      title !== undefined && normalizedModelNames.has(normalizeName(title))
+    );
   })
 );
+const chartKey = (file: string): string =>
+  `${dirname(file)}/${normalizedStem(file)}`;
+const formalChartKeys = new Set([...formalCharts].map(chartKey));
 const scriptExtensions = new Set([
   ".ts",
   ".js",
@@ -124,11 +134,7 @@ for (const path of paths) {
     (extension === ".svg" &&
       (inside ||
         modelDirectories.has(directory) ||
-        chartExtensions
-          .values()
-          .some((chartExtension) =>
-            formalCharts.has(join(directory, `${name}${chartExtension}`))
-          )))
+        formalChartKeys.has(chartKey(path))))
   ) {
     if (!references.test(directory) || extension === ".mnd") {
       report(
