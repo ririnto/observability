@@ -87,30 +87,19 @@ const peleImport =
   /^\s*import\b(?:[^"'();]*?\bfrom)?\s*(?<quote>["'])pele\k<quote>/mu;
 const peleImportCall =
   /(?<![\w$.])(?:import|require)\s*\(\s*(?<quote>["'])pele\k<quote>\s*\)/u;
-const modelFileCall =
-  /\b(?:URL|readFile(?:Sync)?|open(?:Sync)?)\s*\(\s*(?<quote>["'`])[^"'`\r\n]+\.tla\k<quote>/u;
 const modelReference =
   /(?<quote>["'`])(?<literal>[^"'`\r\n]+\.tla)\k<quote>|(?<![\w./-])(?<token>[\w./-]+\.tla)(?![\w./-])/gu;
-const hasFormalSource = (source: string): boolean => {
-  if (
-    tlcTool.test(source) ||
-    peleImport.test(source) ||
-    peleImportCall.test(source) ||
-    modelFileCall.test(source)
-  ) {
-    return true;
-  }
-  for (const { groups } of source.matchAll(modelReference)) {
+const hasFormalSource = (source: string): boolean =>
+  tlcTool.test(source) ||
+  peleImport.test(source) ||
+  peleImportCall.test(source) ||
+  source.matchAll(modelReference).some(({ groups }) => {
     const reference = groups?.literal ?? groups?.token;
-    if (
+    return (
       reference !== undefined &&
-      (reference.includes("/") || modelNames.has(basename(reference, ".tla")))
-    ) {
-      return true;
-    }
-  }
-  return false;
-};
+      (reference.includes("/") || !modelNames.has(basename(reference, ".tla")))
+    );
+  });
 
 let invalid = false;
 const report = (path: string, expected: string): void => {
