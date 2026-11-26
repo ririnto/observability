@@ -30,6 +30,9 @@ catalogs:
     oxlint-tsgolint:
       specifier: ^7.0.2007
       version: 7.0.2007
+    pele:
+      specifier: ^1.13.0
+      version: 1.13.0
     typescript:
       specifier: ^7.0.2
       version: 7.0.2
@@ -75,7 +78,7 @@ importers:
   .claude/skills/formal-verification:
     devDependencies:
       pele:
-        specifier: ^1.13.0
+        specifier: 'catalog:'
         version: 1.13.0
 
 packages:

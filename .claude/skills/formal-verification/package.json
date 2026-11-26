@@ -9,6 +9,6 @@
     "verify:node-textfile": "node scripts/node-textfile/check.ts"
   },
   "devDependencies": {
-    "pele": "^1.13.0"
+    "pele": "catalog:"
   }
 }
