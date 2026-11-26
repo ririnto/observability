@@ -7,6 +7,7 @@
     "check:alert-parity": "go tool task check:alert-parity",
     "check:alertmanager": "go tool task check:alertmanager",
     "check:dashboard": "go tool task check:dashboard",
+    "check:formal-layout": "node .claude/skills/formal-verification/scripts/check-layout.ts",
     "check:generated": "go tool task check:generated",
     "check:golangci-lint": "go tool task check:go",
     "check:jsonnetfmt": "go tool task check:jsonnet",
