@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { basename, dirname, extname } from "node:path/posix";
 import { argv, stderr } from "node:process";
 
@@ -17,16 +17,58 @@ const scripts = new RegExp(
   "u"
 );
 const [commit] = argv.slice(2);
+const gitOptions = {
+  cwd: new URL("../../../../", import.meta.url),
+  encoding: "utf-8" as const
+};
 const paths = new Set(
   execFileSync(
     "git",
     commit === undefined
       ? ["ls-files", "-z"]
       : ["ls-tree", "-r", "-z", "--name-only", commit],
-    { cwd: new URL("../../../../", import.meta.url), encoding: "utf-8" }
+    gitOptions
   )
     .split("\0")
     .filter(Boolean)
+);
+const scriptExtensions = [
+  ".ts",
+  ".js",
+  ".mjs",
+  ".mts",
+  ".cjs",
+  ".cts",
+  ".sh",
+  ".py"
+];
+const formalToolPatterns = [
+  "[\"']tlc2[.]TLC[\"']|require[.]resolve[(][[:blank:]]*[\"'][^\"']*tla2tools[.]jar[\"']",
+  "^[[:blank:]]*import[[:blank:]]+[{][[:blank:]]*render([[:blank:]]+as[[:blank:]]+[$_[:alnum:]]+)?[[:blank:]]*[}][[:blank:]]+from[[:blank:]]+[\"']pele[\"']"
+];
+const matches = spawnSync(
+  "git",
+  [
+    "grep",
+    "-IlzE",
+    ...formalToolPatterns.flatMap((pattern) => ["-e", pattern]),
+    commit ?? "--cached",
+    "--",
+    ...scriptExtensions.map((extension) => `*${extension}`),
+    `:(exclude,glob)${root}/**`
+  ],
+  gitOptions
+);
+if (matches.error || (matches.status !== 0 && matches.status !== 1)) {
+  throw matches.error ?? new Error(matches.stderr.trim() || "git grep failed");
+}
+const formalScripts = new Set(
+  matches.stdout
+    .split("\0")
+    .filter(Boolean)
+    .map((file) =>
+      commit === undefined ? file : file.slice(commit.length + 1)
+    )
 );
 
 let invalid = false;
@@ -62,10 +104,8 @@ for (const path of paths) {
       );
     }
   } else if (
-    [".ts", ".js", ".mjs", ".mts", ".cjs", ".cts", ".sh", ".py"].includes(
-      extension
-    ) &&
-    (formal || name.includes("statechart")) &&
+    scriptExtensions.includes(extension) &&
+    (formal || name.includes("statechart") || formalScripts.has(path)) &&
     (!scripts.test(directory) || extension !== ".ts")
   ) {
     report(
