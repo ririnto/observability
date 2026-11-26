@@ -9,6 +9,7 @@
     "verify:node-textfile": "node scripts/node-textfile/check.ts"
   },
   "devDependencies": {
-    "pele": "catalog:"
+    "pele": "catalog:",
+    "yaml": "catalog:"
   }
 }

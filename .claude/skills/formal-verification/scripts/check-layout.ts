@@ -2,6 +2,8 @@ import { execFileSync } from "node:child_process";
 import { basename, dirname, extname, join } from "node:path/posix";
 import { argv, stderr } from "node:process";
 
+import { isAlias, isScalar, parseDocument } from "yaml";
+
 const root = ".claude/skills/formal-verification";
 const modelName = "[a-z0-9]+(?:-[a-z0-9]+)*";
 const assets = new RegExp(
@@ -41,9 +43,22 @@ const associatedWithModel = (file: string): boolean =>
   modelNames.has(basename(file, extname(file)));
 const chartExtensions = new Set([".mmd", ".mnd"]);
 const frontMatter =
-  /^(?:\uFEFF)?---[ \t]*\r?\n(?<fields>[\s\S]*?)\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/u;
-const titleField =
-  /^(?:title|"title"|'title')[ \t]*:[ \t]*(?:"(?<double>[^"\r\n]*)"|'(?<single>[^'\r\n]*)'|(?<plain>[^#\r\n]*?))[ \t]*(?:#[^\r\n]*)?\r?$/mu;
+  /^(?:\uFEFF)?---[ \t]*\r?\n(?<fields>[\s\S]*?)(?<=\n)(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/u;
+const chartTitle = (source: string): string | undefined => {
+  const fields = frontMatter.exec(source)?.groups?.fields;
+  if (fields === undefined) {
+    return undefined;
+  }
+  const document = parseDocument(fields);
+  if (document.errors.length > 0) {
+    return undefined;
+  }
+  const title = document.get("title", true);
+  const resolved = isAlias(title) ? title.resolve(document) : title;
+  return isScalar(resolved) && typeof resolved.value === "string"
+    ? resolved.value
+    : undefined;
+};
 const formalCharts = new Set(
   paths.filter((file) => {
     if (!chartExtensions.has(extname(file))) {
@@ -52,11 +67,8 @@ const formalCharts = new Set(
     if (inSkill(file) || associatedWithModel(file)) {
       return true;
     }
-    const fields = frontMatter.exec(readSource(file))?.groups?.fields;
-    const title =
-      fields === undefined ? undefined : titleField.exec(fields)?.groups;
-    const value = title?.double ?? title?.single ?? title?.plain;
-    return value !== undefined && modelNames.has(value);
+    const title = chartTitle(readSource(file));
+    return title !== undefined && modelNames.has(title);
   })
 );
 const scriptExtensions = new Set([

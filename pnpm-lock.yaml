@@ -39,6 +39,9 @@ catalogs:
     ultracite:
       specifier: ^8.2.1
       version: 8.3.1
+    yaml:
+      specifier: ^2.9.1
+      version: 2.9.1
 
 importers:
 
@@ -80,6 +83,9 @@ importers:
       pele:
         specifier: 'catalog:'
         version: 1.13.0
+      yaml:
+        specifier: 'catalog:'
+        version: 2.9.1
 
 packages:
 
