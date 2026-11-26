@@ -85,9 +85,11 @@ const style = `<style>
 }
 </style>`;
 
-const source =
-  ".claude/skills/formal-verification/references/node-textfile/statechart.mmd";
-const output = source.replace(".mmd", ".svg");
+const source = new URL(
+  "../references/node-textfile/statechart.mmd",
+  import.meta.url
+);
+const output = new URL("statechart.svg", source);
 const { svg } = render(readFileSync(source, "utf-8"), {
   limit: 1_000_000,
   outputLimit: 8_000_000,
@@ -102,7 +104,9 @@ ${style}
 
 if (argv.includes("--check")) {
   if (!readFileSync(output).equals(Buffer.from(rendered))) {
-    throw new Error(`${output} is out of date. Run pnpm render:statecharts.`);
+    throw new Error(
+      `${output.pathname} is out of date. Run pnpm render:statecharts.`
+    );
   }
 } else {
   writeFileSync(output, rendered);

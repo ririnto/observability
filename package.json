@@ -7,14 +7,14 @@
     "check:alert-parity": "go tool task check:alert-parity",
     "check:alertmanager": "go tool task check:alertmanager",
     "check:dashboard": "go tool task check:dashboard",
-    "check:formal-layout": "node .claude/skills/formal-verification/scripts/check-layout.ts",
+    "check:formal-layout": "pnpm --filter @observability/formal-verification run check:formal-layout",
     "check:generated": "go tool task check:generated",
     "check:golangci-lint": "go tool task check:go",
     "check:jsonnetfmt": "go tool task check:jsonnet",
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:rules": "go tool task check:rules",
     "check:shfmt": "go tool task check:shell",
-    "check:statecharts": "node .claude/skills/formal-verification/scripts/render-statecharts.ts --check",
+    "check:statecharts": "pnpm --filter @observability/formal-verification run check:statecharts",
     "check:typescript": "tsc --noEmit",
     "check:ultracite": "ultracite check",
     "check:workflow-input-defaults": "go tool task check:workflow-input-defaults",
@@ -24,7 +24,7 @@
     "fix:shfmt": "go tool shfmt -w scripts tests",
     "fix:ultracite": "ultracite fix",
     "generate": "go tool task generate",
-    "render:statecharts": "node .claude/skills/formal-verification/scripts/render-statecharts.ts"
+    "render:statecharts": "pnpm --filter @observability/formal-verification run render:statecharts"
   },
   "devDependencies": {
     "@tsconfig/node-lts": "catalog:",
@@ -35,7 +35,6 @@
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
-    "pele": "catalog:",
     "typescript": "catalog:",
     "ultracite": "catalog:"
   },

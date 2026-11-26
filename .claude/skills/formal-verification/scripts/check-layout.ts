@@ -23,7 +23,7 @@ const paths = new Set(
     commit === undefined
       ? ["ls-files", "-z"]
       : ["ls-tree", "-r", "-z", "--name-only", commit],
-    { encoding: "utf-8" }
+    { cwd: new URL("../../../../", import.meta.url), encoding: "utf-8" }
   )
     .split("\0")
     .filter(Boolean)

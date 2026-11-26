@@ -13,7 +13,7 @@ The jar has SHA-256 `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e0
 Set `TLA2TOOLS` to the jar's path and run this command from the repository root.
 
 ```sh
-node .claude/skills/formal-verification/scripts/node-textfile/check.ts
+pnpm --filter @observability/formal-verification run verify:node-textfile
 ```
 
 TLC checks the model's invariants.

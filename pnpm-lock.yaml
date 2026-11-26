@@ -30,9 +30,6 @@ catalogs:
     oxlint-tsgolint:
       specifier: ^7.0.2007
       version: 7.0.2007
-    pele:
-      specifier: ^1.13.0
-      version: 1.13.0
     typescript:
       specifier: ^7.0.2
       version: 7.0.2
@@ -68,15 +65,18 @@ importers:
       oxlint-tsgolint:
         specifier: 'catalog:'
         version: 7.0.2007
-      pele:
-        specifier: 'catalog:'
-        version: 1.13.0
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
       ultracite:
         specifier: 'catalog:'
         version: 8.3.1(oxfmt@0.79.0)(oxlint@1.94.0(oxlint-tsgolint@7.0.2007))
+
+  .claude/skills/formal-verification:
+    devDependencies:
+      pele:
+        specifier: ^1.13.0
+        version: 1.13.0
 
 packages:
 

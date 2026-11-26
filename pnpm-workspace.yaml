@@ -1,3 +1,6 @@
+packages:
+  - .claude/skills/formal-verification
+
 catalog:
   "@tsconfig/node-lts": ^24.0.1
   "@types/node": ^24.19.2
@@ -7,6 +10,5 @@ catalog:
   oxfmt: ^0.79.0
   oxlint: ^1.94.0
   oxlint-tsgolint: ^7.0.2007
-  pele: ^1.13.0
   typescript: ^7.0.2
   ultracite: ^8.2.1
