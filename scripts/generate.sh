@@ -65,4 +65,4 @@ go tool jsonnet -J "$upstream" -J "$upstream/grafana-jsonnet-libs" \
 go tool jsonnet -J "$upstream" -J "$dependencies/nginx-vts/vendor" \
 	-S -c -m "$OUTPUT_DIR" mixins/nginx-vts.libsonnet
 CGO_ENABLED=0 go run ./cmd/formatyaml -strip-promql-comments "$OUTPUT_DIR"/*.yaml
-pnpm exec oxfmt --config oxfmt.config.ts --write "$OUTPUT_DIR"
+pnpm run fix:ultracite --no-error-on-unmatched-pattern "$OUTPUT_DIR"
