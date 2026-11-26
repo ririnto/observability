@@ -13,7 +13,7 @@
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:rules": "go tool task check:rules",
     "check:shfmt": "go tool task check:shell",
-    "check:statecharts": "node scripts/render-statecharts.ts --check",
+    "check:statecharts": "node .claude/skills/formal-verification/scripts/render-statecharts.ts --check",
     "check:typescript": "tsc --noEmit",
     "check:ultracite": "ultracite check",
     "check:workflow-input-defaults": "go tool task check:workflow-input-defaults",
@@ -23,7 +23,7 @@
     "fix:shfmt": "go tool shfmt -w scripts tests",
     "fix:ultracite": "ultracite fix",
     "generate": "go tool task generate",
-    "render:statecharts": "node scripts/render-statecharts.ts"
+    "render:statecharts": "node .claude/skills/formal-verification/scripts/render-statecharts.ts"
   },
   "devDependencies": {
     "@tsconfig/node-lts": "catalog:",

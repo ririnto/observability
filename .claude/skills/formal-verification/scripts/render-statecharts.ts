@@ -86,7 +86,7 @@ const style = `<style>
 </style>`;
 
 const source =
-  ".claude/skills/formal-verification/assets/node-textfile/statechart.mmd";
+  ".claude/skills/formal-verification/references/node-textfile/statechart.mmd";
 const output = source.replace(".mmd", ".svg");
 const { svg } = render(readFileSync(source, "utf-8"), {
   limit: 1_000_000,

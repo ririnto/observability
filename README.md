@@ -89,7 +89,7 @@ The upstream warning and critical variants can fire together. Use the `severity`
 
 The `NodeTextfile` model shows how the Node Exporter textfile collector error alert moves between inactive, pending, and firing.
 
-![NodeTextfile statechart](.claude/skills/formal-verification/assets/node-textfile/statechart.svg)
+![NodeTextfile statechart](.claude/skills/formal-verification/references/node-textfile/statechart.svg)
 
 Run `pnpm render:statecharts` to regenerate the SVG.
 
