@@ -37,12 +37,11 @@ const readSource = (file: string): string =>
 const inSkill = (file: string): boolean => file.startsWith(`${root}/`);
 const models = paths.filter((file) => extname(file) === ".tla");
 const modelDirectories = new Set(models.map((file) => dirname(file)));
-const modelNames = new Set(models.map((file) => basename(file, ".tla")));
 const normalizeName = (name: string): string =>
   name.toLowerCase().replaceAll(/[-_]/gu, "");
 const normalizedStem = (file: string): string =>
   normalizeName(basename(file, extname(file)));
-const normalizedModelNames = new Set([...modelNames].map(normalizeName));
+const normalizedModelNames = new Set(models.map(normalizedStem));
 const associatedWithModel = (file: string): boolean =>
   modelDirectories.has(dirname(file)) ||
   normalizedModelNames.has(normalizedStem(file));
@@ -107,7 +106,8 @@ const hasFormalSource = (source: string): boolean =>
     const reference = groups?.literal ?? groups?.token;
     return (
       reference !== undefined &&
-      (reference.includes("/") || !modelNames.has(basename(reference, ".tla")))
+      (reference.includes("/") ||
+        normalizedModelNames.has(normalizedStem(reference)))
     );
   });
 
