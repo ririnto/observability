@@ -8,6 +8,7 @@
     "check:alertmanager": "go tool task check:alertmanager",
     "check:dashboard": "go tool task check:dashboard",
     "check:formal-layout": "pnpm --filter @observability/formal-verification run check:formal-layout",
+    "check:formal-layout-regressions": "node .claude/skills/formal-verification/scripts/check-layout.test.ts",
     "check:generated": "go tool task check:generated",
     "check:golangci-lint": "go tool task check:go",
     "check:jsonnetfmt": "go tool task check:jsonnet",
