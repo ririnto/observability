@@ -85,6 +85,76 @@ const cases = [
     status: 0
   },
   {
+    name: "tracked-script-link",
+    path: "probe.sh",
+    source: 'model="Foo_Bar.tla"\n',
+    status: 1,
+    target: "notes.txt"
+  },
+  {
+    name: "tracked-ordinary-link",
+    path: "probe.sh",
+    source: "width=4\n",
+    status: 0,
+    target: "notes.txt"
+  },
+  {
+    name: "tracked-parent-link",
+    path: "probe.sh",
+    source: 'model="Foo_Bar.tla"\n',
+    status: 1,
+    target: "docs/../notes.txt"
+  },
+  {
+    name: "tracked-missing-component-link",
+    path: "probe.sh",
+    source: 'model="Foo_Bar.tla"\n',
+    status: 0,
+    target: "missing/../notes.txt"
+  },
+  {
+    name: "tracked-directory-link",
+    path: "probe.sh",
+    source: 'model="Foo_Bar.tla"\n',
+    status: 0,
+    target: "docs"
+  },
+  {
+    name: "tracked-metadata-link",
+    path: "probe.sh",
+    source: 'model="Foo_Bar.tla"\n',
+    status: 0,
+    target: ".git/../notes.txt"
+  },
+  {
+    name: "tracked-outside-link",
+    path: "probe.sh",
+    source: 'model="Foo_Bar.tla"\n',
+    status: 0,
+    target: "../notes.txt"
+  },
+  {
+    name: "tracked-dangling-link",
+    path: "probe.sh",
+    source: 'model="Foo_Bar.tla"\n',
+    status: 0,
+    target: "missing.txt"
+  },
+  {
+    name: "tracked-nonregular-link",
+    path: "probe.sh",
+    source: 'model="Foo_Bar.tla"\n',
+    status: 0,
+    target: "alias.txt"
+  },
+  {
+    name: "tracked-link-with-shebang",
+    path: "probe",
+    source: '#!/usr/bin/env bash\nmodel="Foo_Bar.tla"\n',
+    status: 1,
+    target: `${skill}/scripts/notes.ts`
+  },
+  {
     name: "ruby-script",
     path: "probe.rb",
     source: 'puts "Foo_Bar.tla"\n',
@@ -124,7 +194,8 @@ for (const {
   name,
   path: file,
   source,
-  status: expectedStatus
+  status: expectedStatus,
+  target: linkTarget
 } of selectedCases) {
   void test(name, (context) => {
     const cwd = mkdtempSync(path.join(tmpdir(), "observability-layout-"));
@@ -145,10 +216,47 @@ for (const {
       path.join(cwd, modelDirectory, "Foo_Bar.tla"),
       "---- MODULE Foo_Bar ----\n====\n"
     );
-    writeFileSync(path.join(cwd, file), source);
-    fixtureGit(cwd, "add", "--", modelDirectory, file);
+    const tracked = [modelDirectory, file];
+    const notes =
+      name === "tracked-link-with-shebang"
+        ? `${skill}/scripts/notes.ts`
+        : "notes.txt";
+    if (linkTarget === undefined) {
+      writeFileSync(path.join(cwd, file), source);
+    } else {
+      mkdirSync(path.join(cwd, "docs"));
+      writeFileSync(path.join(cwd, ".git/notes.txt"), source);
+      writeFileSync(path.join(cwd, "docs/example.txt"), "Tracked directory.");
+      writeFileSync(path.join(cwd, notes), source);
+      if (linkTarget === "alias.txt") {
+        symlinkSync(notes, path.join(cwd, "alias.txt"));
+        tracked.push("alias.txt");
+      }
+      symlinkSync(linkTarget, path.join(cwd, file));
+      tracked.push("docs", notes);
+    }
+    fixtureGit(cwd, "add", "--", ...tracked);
+    if (linkTarget !== undefined) {
+      writeFileSync(path.join(cwd, notes), "Different checkout bytes.");
+    }
     const tree = fixtureGit(cwd, "write-tree").trim();
     const indexed = spawnSync(execPath, [checker], fixtureOptions(cwd));
+    if (name === "tracked-script-link") {
+      fixtureGit(cwd, "add", "--", notes);
+      const neutralTree = fixtureGit(cwd, "write-tree").trim();
+      fixtureGit(cwd, "read-tree", tree);
+      const fromNeutralTree = spawnSync(
+        execPath,
+        [checker, neutralTree],
+        fixtureOptions(cwd)
+      );
+      context.diagnostic(
+        `neutral tree with formal index: exit=${fromNeutralTree.status}`
+      );
+      assert.ifError(fromNeutralTree.error);
+      assert.equal(fromNeutralTree.status, 0);
+      assert.equal(fromNeutralTree.stderr, "");
+    }
     fixtureGit(cwd, "read-tree", "--empty");
     const fromTree = spawnSync(execPath, [checker, tree], fixtureOptions(cwd));
     const scriptName = `${path.basename(file, path.extname(file))}.ts`;
