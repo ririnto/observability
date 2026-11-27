@@ -73,6 +73,18 @@ const cases = [
     status: 1
   },
   {
+    name: "pele-template-import",
+    path: "probe.mjs",
+    source: "await import(`pele`);\n",
+    status: 1
+  },
+  {
+    name: "unrelated-template-import",
+    path: "probe.mjs",
+    source: "await import(`node:fs`);\n",
+    status: 0
+  },
+  {
     name: "ruby-script",
     path: "probe.rb",
     source: 'puts "Foo_Bar.tla"\n',
