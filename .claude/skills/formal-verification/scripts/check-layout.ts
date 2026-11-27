@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { basename, dirname, extname } from "node:path/posix";
 import { argv, stderr } from "node:process";
 
@@ -81,15 +81,75 @@ const chartKey = (file: string): string =>
   `${dirname(file)}/${normalizedStem(file)}`;
 const formalChartKeys = new Set([...formalCharts].map(chartKey));
 const scriptExtensions = new Set([
-  ".ts",
+  ".sh",
+  ".bash",
+  ".zsh",
+  ".ksh",
+  ".fish",
+  ".py",
+  ".rb",
+  ".pl",
+  ".php",
+  ".lua",
+  ".ps1",
+  ".bat",
+  ".cmd",
+  ".r",
+  ".jl",
+  ".kts",
+  ".gradle",
+  ".groovy",
   ".js",
   ".mjs",
-  ".mts",
   ".cjs",
+  ".jsx",
+  ".ts",
+  ".mts",
   ".cts",
-  ".sh",
-  ".py"
+  ".tsx"
 ]);
+const shebangPaths = (): Set<string> => {
+  // Limit each blob's output to a line number and the two matched bytes.
+  const result = spawnSync(
+    "git",
+    [
+      "grep",
+      "--no-color",
+      "--no-heading",
+      "--no-break",
+      "--no-column",
+      "--no-textconv",
+      "--text",
+      "--basic-regexp",
+      "--line-number",
+      "--null",
+      "--only-matching",
+      "--max-count=1",
+      "-e",
+      "^#!",
+      commit ?? "--cached",
+      "--"
+    ],
+    gitOptions
+  );
+  if (result.error !== undefined) {
+    throw result.error;
+  }
+  if (result.status !== 0 && result.status !== 1) {
+    throw new Error(`git grep could not check shebangs: ${result.stderr}`);
+  }
+  const prefixLength = commit === undefined ? 0 : commit.length + 1;
+  const firstLines = new Set<string>();
+  for (const { groups } of result.stdout.matchAll(
+    /(?<file>[^\0]+)\0(?<line>\d+)\0#!\n/gu
+  )) {
+    if (groups?.line === "1" && groups.file !== undefined) {
+      firstLines.add(groups.file.slice(prefixLength));
+    }
+  }
+  return firstLines;
+};
+const scriptsWithShebang = shebangPaths();
 const tlcTool =
   /(?<![\w.-])(?:tlc2\.TLC|tla2tools(?:-[\w.-]+)?\.jar)(?![\w.-])/u;
 const peleImport =
@@ -143,7 +203,7 @@ for (const path of paths) {
       );
     }
   } else if (
-    scriptExtensions.has(extension) &&
+    (scriptExtensions.has(extension) || scriptsWithShebang.has(path)) &&
     (!scripts.test(directory) || extension !== ".ts") &&
     (inside || hasFormalSource(readSource(path)))
   ) {
