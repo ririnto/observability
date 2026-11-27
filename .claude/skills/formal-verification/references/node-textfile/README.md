@@ -13,7 +13,7 @@ The jar has SHA-256 `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e0
 Set `TLA2TOOLS` to the jar's path and run this command from the repository root.
 
 ```sh
-node .claude/skills/formal-verification/scripts/node-textfile/check.ts
+pnpm --filter @observability/formal-verification run verify:node-textfile
 ```
 
 TLC checks the model's invariants.
@@ -45,7 +45,9 @@ Restore the conjunct and rerun the check.
 
 ## Regenerate the statechart
 
-Set `STATECHART` to the path of `scripts/statechart` in pstack 0.15.46's `statechart` skill.
+![NodeTextfile statechart](statechart.svg)
+
+Set `STATECHART` to the path of `scripts/statechart` in pstack 0.15.48's `statechart` skill.
 With `TLA2TOOLS` still set, run these commands from the repository root.
 
 ```sh
@@ -55,8 +57,9 @@ out="$(mktemp -d)"
   --config "$model/NodeTextfile.cfg" \
   --view .claude/skills/formal-verification/scripts/node-textfile/view.ts \
   --out "$out"
-diff -u "$model/statechart.mmd" "$out/chart.mmd"
+diff -u .claude/skills/formal-verification/references/node-textfile/statechart.mmd "$out/chart.mmd"
 ```
 
-After a model or view change, inspect `report.md` in the output directory before copying `chart.mmd` over the [committed statechart](../../assets/node-textfile/statechart.mmd).
+After a model or view change, inspect `report.md` in the output directory before copying `chart.mmd` over the [committed statechart](statechart.mmd).
+Run `pnpm render:statecharts` after you update the Mermaid source.
 The chart hides evaluations that stay in the same display state.

@@ -1,0 +1,15 @@
+{
+  "name": "@observability/formal-verification",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:formal-layout": "node scripts/check-layout.ts",
+    "check:statecharts": "node scripts/render-statecharts.ts --check",
+    "render:statecharts": "node scripts/render-statecharts.ts",
+    "verify:node-textfile": "node scripts/node-textfile/check.ts"
+  },
+  "devDependencies": {
+    "pele": "catalog:",
+    "yaml": "catalog:"
+  }
+}
