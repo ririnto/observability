@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { basename, dirname, extname } from "node:path/posix";
+import { basename, dirname, extname, isAbsolute } from "node:path/posix";
 import { argv, stderr } from "node:process";
 
 import { isAlias, isScalar, parseDocument } from "yaml";
@@ -23,17 +23,67 @@ const gitOptions = {
   cwd: new URL("../../../../", import.meta.url),
   encoding: "utf-8" as const
 };
-const paths = execFileSync(
+const modes = new Map<string, string>();
+const records = execFileSync(
   "git",
   commit === undefined
-    ? ["ls-files", "-z"]
-    : ["ls-tree", "-r", "-z", "--name-only", commit],
+    ? ["ls-files", "--stage", "-z"]
+    : ["ls-tree", "-r", "-z", commit],
   gitOptions
-)
-  .split("\0")
-  .filter(Boolean);
+);
+for (const { groups } of records.matchAll(
+  /(?<mode>[0-7]{6}) [^\t\0]+\t(?<file>[^\0]+)\0/gu
+)) {
+  if (groups?.mode !== undefined && groups.file !== undefined) {
+    modes.set(groups.file, groups.mode);
+  }
+}
+const paths = [...modes.keys()];
 const readSource = (file: string): string =>
   execFileSync("git", ["show", `${commit ?? ""}:${file}`], gitOptions);
+
+const directories = new Set(["."]);
+for (const file of paths) {
+  let directory = dirname(file);
+  while (!directories.has(directory)) {
+    directories.add(directory);
+    directory = dirname(directory);
+  }
+}
+
+const isRegular = (file: string): boolean => {
+  const mode = modes.get(file);
+  return mode === "100644" || mode === "100755";
+};
+
+const scriptSource = (file: string): string | undefined => {
+  if (modes.get(file) !== "120000") {
+    return isRegular(file) ? file : undefined;
+  }
+  const target = readSource(file);
+  if (target === "" || isAbsolute(target) || target.includes("\0")) {
+    return undefined;
+  }
+  const parent = dirname(file);
+  const resolved = parent === "." ? [] : parent.split("/");
+  const parts = target.split("/");
+  for (const [index, part] of parts.entries()) {
+    if (part === "..") {
+      if (resolved.pop() === undefined) {
+        return undefined;
+      }
+    } else if (part.toLowerCase() === ".git") {
+      return undefined;
+    } else if (part !== "" && part !== ".") {
+      resolved.push(part);
+      if (index < parts.length - 1 && !directories.has(resolved.join("/"))) {
+        return undefined;
+      }
+    }
+  }
+  const path = resolved.join("/");
+  return isRegular(path) ? path : undefined;
+};
 const inSkill = (file: string): boolean => file.startsWith(`${root}/`);
 const models = paths.filter((file) => extname(file) === ".tla");
 const modelDirectories = new Set(models.map((file) => dirname(file)));
@@ -182,6 +232,7 @@ for (const path of paths) {
   const extension = extname(path);
   const name = basename(path, extension);
   const inside = inSkill(path);
+  const source = scriptSource(path);
   if (
     extension === ".tla" ||
     (extension === ".cfg" && (inside || associatedWithModel(path)))
@@ -203,9 +254,10 @@ for (const path of paths) {
       );
     }
   } else if (
-    (scriptExtensions.has(extension) || scriptsWithShebang.has(path)) &&
+    (scriptExtensions.has(extension) ||
+      (source !== undefined && scriptsWithShebang.has(source))) &&
     (!scripts.test(directory) || extension !== ".ts") &&
-    (inside || hasFormalSource(readSource(path)))
+    (inside || (source !== undefined && hasFormalSource(readSource(source))))
   ) {
     report(
       path,
