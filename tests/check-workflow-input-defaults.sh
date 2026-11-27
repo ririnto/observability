@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+run_fixture() (
+	unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR
+	"$@"
+)
+
 directory="$(mktemp -d)"
 trap 'rm -rf -- "$directory"' EXIT
 workflows="$directory/.github/workflows"
@@ -149,11 +154,11 @@ jobs:
           missing: ''
 YAML
 
-git -C "$directory" init --quiet
-git -C "$directory" add .github
-tree="$(git -C "$directory" write-tree)"
-commit="$(git -C "$directory" -c user.name=Fixture -c user.email=fixture@example.invalid commit-tree "$tree" -m 'Record workflow fixture')"
-git -C "$directory" update-ref HEAD "$commit"
+run_fixture git -C "$directory" init --quiet
+run_fixture git -C "$directory" add .github
+tree="$(run_fixture git -C "$directory" write-tree)"
+commit="$(run_fixture git -C "$directory" -c user.name=Fixture -c user.email=fixture@example.invalid commit-tree "$tree" -m 'Record workflow fixture')"
+run_fixture git -C "$directory" update-ref HEAD "$commit"
 
 assert_records() {
 	awk '
@@ -249,7 +254,7 @@ else
 	printf 'Diagnostic matcher rejected scratch output with one record removed (exit %s).\n' "$matcher_status"
 fi
 
-go tool workflowcheck "$workflows" >"$directory/review"
+run_fixture go tool workflowcheck "$workflows" >"$directory/review"
 assert_records /dev/stdin "$directory/review" <<'EXPECTED'
 controls.yaml 35 ./.github/actions/sample
 controls.yaml 42 ./.github/actions/sample
@@ -285,9 +290,9 @@ cat >>"$workflows/controls.yaml" <<'YAML'
         with:
           empty: null
 YAML
-git -C "$directory" add .github/workflows/controls.yaml
+run_fixture git -C "$directory" add .github/workflows/controls.yaml
 
-if go tool workflowcheck "$workflows" >"$directory/review" 2>"$directory/diagnostics"; then
+if run_fixture go tool workflowcheck "$workflows" >"$directory/review" 2>"$directory/diagnostics"; then
 	cat "$directory/review" >&2
 	printf '%s\n' 'Expected a redundant input finding in the staged workflow.' >&2
 	exit 1
@@ -304,7 +309,7 @@ controls.yaml 48 ./.github/actions/missing
 EXPECTED
 
 assert_staged_workflow_left_to_review() {
-	go tool workflowcheck "$workflows" >"$directory/review" 2>"$directory/diagnostics"
+	run_fixture go tool workflowcheck "$workflows" >"$directory/review" 2>"$directory/diagnostics"
 	test ! -s "$directory/diagnostics"
 	assert_records /dev/stdin "$directory/review" <<'EXPECTED'
 controls.yaml 35 ./.github/actions/sample
@@ -317,10 +322,10 @@ EXPECTED
 
 printf 'name: Working copy only\n' >"$directory/.github/actions/sample/action.yaml"
 assert_staged_workflow_left_to_review
-git -C "$directory" add .github/actions/sample/action.yaml
-git -C "$directory" restore --source=HEAD --worktree -- .github/actions/sample/action.yaml
+run_fixture git -C "$directory" add .github/actions/sample/action.yaml
+run_fixture git -C "$directory" restore --source=HEAD --worktree -- .github/actions/sample/action.yaml
 assert_staged_workflow_left_to_review
-git -C "$directory" restore --staged --worktree -- .github/actions/sample/action.yaml .github/workflows/controls.yaml
+run_fixture git -C "$directory" restore --staged --worktree -- .github/actions/sample/action.yaml .github/workflows/controls.yaml
 
 cat >"$workflows/findings.yaml" <<'YAML'
 name: Findings
@@ -528,13 +533,13 @@ jobs:
           double-rounding: 100000000000000501
           distinct-number: 100000000000003
 YAML
-git -C "$directory" add .github
-tree="$(git -C "$directory" write-tree)"
-commit="$(git -C "$directory" -c user.name=Fixture -c user.email=fixture@example.invalid commit-tree "$tree" -m 'Record default-equal inputs')"
-git -C "$directory" update-ref HEAD "$commit"
+run_fixture git -C "$directory" add .github
+tree="$(run_fixture git -C "$directory" write-tree)"
+commit="$(run_fixture git -C "$directory" -c user.name=Fixture -c user.email=fixture@example.invalid commit-tree "$tree" -m 'Record default-equal inputs')"
+run_fixture git -C "$directory" update-ref HEAD "$commit"
 
 assert_redundant_defaults() {
-	if go tool workflowcheck "$workflows" >"$directory/review" 2>"$directory/diagnostics"; then
+	if run_fixture go tool workflowcheck "$workflows" >"$directory/review" 2>"$directory/diagnostics"; then
 		printf '%s\n' 'Expected workflowcheck to reject redundant defaults.' >&2
 		exit 1
 	else
