@@ -155,7 +155,7 @@ const tlcTool =
 const peleImport =
   /^\s*import\b(?:[^"'();]*?\bfrom)?\s*(?<quote>["'])pele\k<quote>/mu;
 const peleImportCall =
-  /(?<![\w$.])(?:import|require)\s*\(\s*(?<quote>["'])pele\k<quote>\s*\)/u;
+  /(?<![\w$.])(?:import|require)\s*\(\s*(?<quote>["'`])pele\k<quote>\s*\)/u;
 const modelReference =
   /(?<quote>["'`])(?<literal>[^"'`\r\n]+\.tla)\k<quote>|(?<![\w./-])(?<token>[\w./-]+\.tla)(?![\w./-])/gu;
 const hasFormalSource = (source: string): boolean =>
