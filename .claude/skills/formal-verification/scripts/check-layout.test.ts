@@ -32,20 +32,21 @@ delete fixtureEnv.GIT_INDEX_FILE;
 delete fixtureEnv.GIT_OBJECT_DIRECTORY;
 delete fixtureEnv.GIT_ALTERNATE_OBJECT_DIRECTORIES;
 delete fixtureEnv.GIT_COMMON_DIR;
-const fixtureOptions = (cwd: string) => ({
+const fixtureOptions = (cwd: string | URL) => ({
   cwd,
   encoding: "utf-8" as const,
   env: fixtureEnv
 });
-const fixtureGit = (cwd: string, ...args: string[]): string =>
+const fixtureGit = (cwd: string | URL, ...args: string[]): string =>
   execFileSync("git", args, fixtureOptions(cwd));
 const checkerSource =
   checkerRef === undefined
     ? readFileSync(new URL("check-layout.ts", import.meta.url), "utf-8")
-    : execFileSync("git", ["show", `${checkerRef}:${checker}`], {
-        cwd: new URL("../../../../", import.meta.url),
-        encoding: "utf-8"
-      });
+    : fixtureGit(
+        new URL("../../../../", import.meta.url),
+        "show",
+        `${checkerRef}:${checker}`
+      );
 const cases = [
   {
     name: "normalized-model",
@@ -163,7 +164,22 @@ if (selectedCase === undefined || selectedCase === environmentCase) {
     fixtureGit(cwd, "init", "--quiet");
     writeFileSync(path.join(cwd, "sentinel.txt"), "Keep this staged.\n");
     fixtureGit(cwd, "add", "--", "sentinel.txt");
+    const tree = fixtureGit(cwd, "write-tree").trim();
+    const commit = fixtureGit(
+      cwd,
+      "-c",
+      "user.name=Fixture",
+      "-c",
+      "user.email=fixture@example.invalid",
+      "commit-tree",
+      tree,
+      "-m",
+      "Record sentinel fixture"
+    ).trim();
+    fixtureGit(cwd, "update-ref", "HEAD", commit);
     const gitDir = path.join(cwd, ".git");
+    const alternateObjects = path.join(gitDir, "alternate-objects");
+    mkdirSync(alternateObjects);
     const index = path.join(gitDir, "index");
     const config = path.join(gitDir, "config");
     const indexBefore = readFileSync(index);
@@ -175,18 +191,22 @@ if (selectedCase === undefined || selectedCase === environmentCase) {
       "--get",
       "core.bare"
     ).trim();
-    const result = spawnSync(execPath, [import.meta.filename, "node-shebang"], {
-      ...fixtureOptions(cwd),
-      env: {
-        ...fixtureEnv,
-        GIT_DIR: gitDir,
-        GIT_WORK_TREE: cwd,
-        GIT_INDEX_FILE: index,
-        GIT_OBJECT_DIRECTORY: path.join(gitDir, "objects"),
-        GIT_ALTERNATE_OBJECT_DIRECTORIES: path.join(gitDir, "alternates"),
-        GIT_COMMON_DIR: gitDir
+    const result = spawnSync(
+      execPath,
+      [import.meta.filename, "--checker-ref=HEAD", "node-shebang"],
+      {
+        ...fixtureOptions(cwd),
+        env: {
+          ...fixtureEnv,
+          GIT_DIR: gitDir,
+          GIT_WORK_TREE: cwd,
+          GIT_INDEX_FILE: index,
+          GIT_OBJECT_DIRECTORY: path.join(gitDir, "objects"),
+          GIT_ALTERNATE_OBJECT_DIRECTORIES: alternateObjects,
+          GIT_COMMON_DIR: gitDir
+        }
       }
-    });
+    );
     const bareAfter = fixtureGit(
       cwd,
       "config",
