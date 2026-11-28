@@ -4,6 +4,7 @@ packages:
 catalog:
   "@tsconfig/node-lts": ^24.0.1
   "@types/node": ^24.19.2
+  husky: ^9.1.7
   markdownlint: ^0.42.1
   markdownlint-cli2: ^0.24.1
   npm-run-all2: ^9.0.4
