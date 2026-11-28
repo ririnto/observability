@@ -17,6 +17,7 @@
     "check:shfmt": "go tool task check:shell",
     "check:statecharts": "pnpm --filter @observability/formal-verification run check:statecharts",
     "check:typescript": "tsc --noEmit",
+    "check:typescript-formal-verification": "pnpm --filter @observability/formal-verification run check:typescript",
     "check:ultracite": "ultracite check",
     "check:workflow-input-defaults": "go tool task check:workflow-input-defaults",
     "fix": "run-p fix:*",

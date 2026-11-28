@@ -3,13 +3,20 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check": "run-p check:*",
     "check:formal-layout": "node scripts/check-layout.ts",
     "check:statecharts": "node scripts/render-statecharts.ts --check",
+    "check:typescript": "tsc",
     "render:statecharts": "node scripts/render-statecharts.ts",
     "verify:node-textfile": "node scripts/node-textfile/check.ts"
   },
   "devDependencies": {
+    "@tsconfig/node-lts": "catalog:",
+    "@types/node": "catalog:",
+    "npm-run-all2": "catalog:",
     "pele": "catalog:",
+    "tla-chaos-loop": "catalog:",
+    "typescript": "catalog:",
     "yaml": "catalog:"
   }
 }
