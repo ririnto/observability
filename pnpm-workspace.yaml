@@ -4,6 +4,7 @@ packages:
 catalog:
   "@tsconfig/node-lts": ^24.0.1
   "@types/node": ^24.19.2
+  husky: ^9.1.7
   markdownlint: ^0.42.1
   markdownlint-cli2: ^0.24.1
   npm-run-all2: ^9.0.4
@@ -11,6 +12,7 @@ catalog:
   oxlint: ^1.94.0
   oxlint-tsgolint: ^7.0.2007
   pele: ^1.13.0
+  tla-chaos-loop: ^1.1.0
   typescript: ^7.0.2
   ultracite: ^8.2.1
   yaml: ^2.9.1
