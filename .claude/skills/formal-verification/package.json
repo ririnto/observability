@@ -5,11 +5,11 @@
   "scripts": {
     "check": "run-p check:*",
     "check:formal-layout": "node scripts/check-layout.ts",
+    "check:node-textfile": "node scripts/node-textfile/check.ts",
     "check:statecharts": "node scripts/render-statecharts.ts --check",
     "check:typescript": "tsc",
     "render:statechart": "run-p render:statechart:*",
-    "render:statechart:node-textfile": "node scripts/render-statecharts.ts",
-    "verify:node-textfile": "node scripts/node-textfile/check.ts"
+    "render:statechart:node-textfile": "node scripts/render-statecharts.ts"
   },
   "devDependencies": {
     "@tsconfig/node-lts": "catalog:",
