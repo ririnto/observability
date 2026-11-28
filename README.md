@@ -8,6 +8,7 @@ See the [target metrics reference](docs/targets.md) for scrape paths, enablement
 ## Generate and verify
 
 Use Go as declared in `go.mod`, Node.js 24, and the pnpm version in `package.json`.
+Install Java for the Node Exporter textfile model check.
 The Go module supplies the tools used to generate and verify the configuration.
 
 - Jsonnet
@@ -29,6 +30,7 @@ CI runs the following configuration checks.
 
 - Render into a temporary directory and compare the bytes with the committed output.
 - Check and test Prometheus rules.
+- Check the Node Exporter textfile model and replay its alert against the generated rules.
 - Require a Grafana and a Prometheus rule for each alert, including each variant with distinct labels.
 - Check Alertmanager configuration and routing.
 - Validate the dashboards against Grafana's published V2 and Classic CUE schemas.

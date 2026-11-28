@@ -11,10 +11,11 @@ Install Java.
 Run this command from the repository root to use the TLC jar bundled with `tla-chaos-loop`.
 
 ```sh
-pnpm --filter @observability/formal-verification run verify:node-textfile
+pnpm --filter @observability/formal-verification run check:node-textfile
 ```
 
 Set `TLA2TOOLS` to an alternate jar path to override the bundled jar.
+The root and skill check suites also run this check.
 TLC checks the model's invariants.
 The same command regenerates the rules in a temporary directory and checks the declared group interval.
 It runs the repository's `promtool` against the generated rules at that interval.
@@ -47,9 +48,8 @@ Restore the conjunct and rerun the check.
 ![NodeTextfile statechart](statechart.svg)
 
 Set `STATECHART` to the path of `scripts/statechart` in pstack 0.15.48's `statechart` skill.
-Download `tla2tools.jar` from the [TLA+ v1.7.4 release](https://github.com/tlaplus/tlaplus/releases/tag/v1.7.4) to reproduce the committed Mermaid source.
-The jar has SHA-256 `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`.
-Set `TLA2TOOLS` to that jar's path and run these commands from the repository root.
+Set `TLA2TOOLS` to a TLC jar supported by the statechart tool.
+Run these commands from the repository root.
 
 ```sh
 model=.claude/skills/formal-verification/assets/node-textfile
