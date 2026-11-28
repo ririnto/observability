@@ -7,7 +7,8 @@
     "check:formal-layout": "node scripts/check-layout.ts",
     "check:statecharts": "node scripts/render-statecharts.ts --check",
     "check:typescript": "tsc",
-    "render:statecharts": "node scripts/render-statecharts.ts",
+    "render:statechart": "run-p render:statechart:*",
+    "render:statechart:node-textfile": "node scripts/render-statecharts.ts",
     "verify:node-textfile": "node scripts/node-textfile/check.ts"
   },
   "devDependencies": {

@@ -2,11 +2,13 @@ import { execFileSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const jar = process.env.TLA2TOOLS;
-if (jar === undefined || jar === "") {
-  throw new Error("Set TLA2TOOLS to the path of the TLC v1.7.4 jar.");
-}
+const configuredJar = process.env.TLA2TOOLS;
+const jar =
+  configuredJar === undefined || configuredJar === ""
+    ? fileURLToPath(import.meta.resolve("tla-chaos-loop/tools/tla2tools.jar"))
+    : configuredJar;
 
 const model = path.resolve(import.meta.dirname, "../../assets/node-textfile");
 const root = path.resolve(import.meta.dirname, "../../../../..");
